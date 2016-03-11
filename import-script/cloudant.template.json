@@ -1,9 +1,0 @@
-{
-  "credentials": {
-    "username": "",
-    "password": "",
-    "host": "*.cloudant.com",
-    "port": 443,
-    "url": ""
-  }
-}
