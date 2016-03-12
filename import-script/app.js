@@ -17,8 +17,7 @@ const argv = require('minimist')(process.argv.slice(2), {
   default: {
     db: 'stock-data-test',
     'clean-db': false,
-    'process-chunk-size': 10,
-    'api-chunk-size': 50000
+    'process-chunk-size': 50,
   }
 });
 
@@ -31,7 +30,6 @@ const dir                 = argv.dir;
 const db_name             = argv.db;
 const clean_db            = argv['clean-db'];
 const PROCESS_CHUNK_SIZE  = argv['process-chunk-size'];
-const API_CHUNK_SIZE      = argv['api-chunk-size'];
 
 console.log(util.format("Reading from %s, storing into %s:%s", dir, cloudant_cred.host, db_name));
 
@@ -157,7 +155,7 @@ function processRar(rarFile, proc) {
           let perIdx = _.after(chunk.length, () => {
             console.log(util.format("Processing chunk %d/%d", idx+1, chunks.length));
 
-            proc(_.flatten(docSet), () => {
+            proc(docSet, () => {
               console.log("running next chunk");
               // recursively start the next chunk
               _.defer(run_chunk, idx+1);
@@ -197,7 +195,6 @@ const csv_to_docs = (() => {
     // console.log(util.format("csv_to_docs: %d: %s", date, file));
 
     const ticker = TICKER_REG.exec(file)[1];
-    const ndate = Number(date);
 
     const path = './' + date + '/' + file;
 
@@ -207,14 +204,20 @@ const csv_to_docs = (() => {
       parse(data, (err, rows) => {
         if (!!err) throw err;
 
-        let docs = rows.map(row => ({
-            date: ndate,
-            ticker: ticker,
+        let doc = {
+          date:  Number(date), 
+          ticker: ticker,
+          transactions: rows.map(row => ({
             time: Number(row[0]),
-            data: row.slice(1)
-          }));
+            price: Number(row[1]),
+            size: Number(row[2]),
+            exch: row[3],
+            condit: row[4],
+            sp: row[5]
+          }))
+        };
 
-        next(file, docs);
+        next(file, doc);
       });
     });
   };
