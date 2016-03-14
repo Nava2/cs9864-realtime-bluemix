@@ -1,0 +1,25 @@
+extends layout
+
+block content
+  h1= title
+  p Displaying Transactions on 2011-01-13 for #{title}
+  
+  table.table.table-striped
+    thead 
+        tr
+            th
+            th Date
+            th Time
+            th Price
+
+    tbody
+        - var i = 0
+        each row in data
+            tr
+                td #{++i}
+                td #{row.date}
+                td #{row.time}
+                td #{row.price}
+
+
+
