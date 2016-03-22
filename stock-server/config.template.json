@@ -1,0 +1,10 @@
+{
+  "interface": "eth0",
+  "port": 1111111,
+  "secret": "secret-passphrase",
+  "database": "database-path",
+  "loader": {
+    "stock-dir": "/path/to/rar/files",
+    "command": "/usr/bin/node ../import-script/app.js --dir <%= stock-dir %> --db <%= database %> <&= date %>"
+  }
+}
