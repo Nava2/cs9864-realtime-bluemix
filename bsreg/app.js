@@ -20,7 +20,6 @@ app.use(express.static(__dirname + '/public'));
 // get the app environment from Cloud Foundry
 var appEnv = cfenv.getAppEnv();
 
-
 const Cloudant = require('cloudant');
 const cloudant_cred = require('./cloudant.json').credentials;
 const cloudant = Cloudant(cloudant_cred.url);
@@ -242,6 +241,64 @@ app.get('/listalldocs', function(req,res){
         });
     }
 })
+
+
+//delete bs
+app.get('/delbsbyname', function (req, res) {
+    regname = req.query.name;
+    var m_arr=[];
+    if (db) {
+        // check deplicated bsname
+        query={};
+        query[bsnamefield]=regname;
+        db.find({selector:query}, function(er, result) {
+            if (er) {
+                console.log(er);
+                res.send({ error: 'can not access the db' });
+            }
+            for (var i = 0; i < result.docs.length; i++) {
+                db.destroy(result.docs[i]._id,result.docs[i]._rev, function(err, data) {
+                    if (er) {
+                        throw er;
+                    }
+                });
+            }
+            res.send('deleted');
+        });
+    }else{
+        console.log('db is not running')
+        res.status(400).send({error: 'db is not running'});
+    }
+});
+
+//
+app.get('/delbsbyurl', function (req, res) {
+    regurl = req.query.url;
+    var m_arr=[];
+    if (db) {
+        // check deplicated bsname
+        query={};
+        query[bsurlfield]=regurl;
+        db.find({selector:query}, function(er, result) {
+            if (er) {
+                console.log(er);
+                res.send({ error: 'can not access the db' });
+            }
+            for (var i = 0; i < result.docs.length; i++) {
+                db.destroy(result.docs[i]._id,result.docs[i]._rev, function(err, data) {
+                    if (er) {
+                        throw er;
+                    }
+                });
+            }
+            res.send('deleted');
+        });
+    }else{
+        console.log('db is not running')
+        res.status(400).send({error: 'db is not running'});
+    }
+});
+
 
 // start server on the specified port and binding host
 app.listen(appEnv.port, '0.0.0.0', function () {
