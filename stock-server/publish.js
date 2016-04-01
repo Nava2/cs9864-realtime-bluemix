@@ -1,14 +1,16 @@
 'use strict';
 
+const _ = require('lodash');
+const sqlite3 = require('sqlite3');
+const moment = require('moment');
+
+const history = require('./history');
+
 module.exports = (winston) => {
 
-  const w = winston;
-  const _ = require('lodash');
-  const sqlite3 = require('sqlite3');
-  const moment = require('moment');
+  const w = (!!winston ? winston : require('winston'));
 
-  const history = require('./history');
-  const cast_serv = require('./cast-serv')(winston);
+  const CastServer = require('./cast-server')(w);
 
   /**
    * @enum
@@ -52,11 +54,11 @@ module.exports = (winston) => {
 
     constructor(config) {
       config = _.defaults(config, {
-        'chunk-size': 1500
+        'chunk-size': 1000
       });
 
       this._db = new sqlite3.Database(config.database);
-      this._cast_serv = new cast_serv.Server(config);
+      this._cast = new CastServer(config);
 
       this._chunkSize = config['chunk-size'];
 
@@ -66,7 +68,6 @@ module.exports = (winston) => {
       this._stopCallback = null;
 
       this._publishInterval = null;
-      this._exchange_id = config.exchange_id;
     }
 
     get history() {
@@ -77,22 +78,22 @@ module.exports = (winston) => {
       return stateToStr(this._state);
     }
 
-    get exchange() {
-      return this._exchange_id;
-    }
-
-    registerEndPoint(address, port, next) {
-      this._cast_serv.registerEndPoint(address, port, next);
+    /**
+     * 
+     * @param {EndPoint} endpoint
+     * @param next
+     */
+    registerEndPoint(endpoint, next) {
+      this._cast.registerEndPoint(endpoint, next);
     }
 
     /**
      * Unregisters an endPoint from receiving messages.
-     * @param address IP address to remove
-     * @param [port] {Number}
+     * @param@param {EndPoint} endpoint
      * @callback next Called when the end point is removed
      */
-    unregisterEndPoint(address, port, next) {
-      this._cast_serv.unregisterEndPoint(address, port, next);
+    unregisterEndPoint(endpoint, next) {
+      this._cast.unregisterEndPoint(endpoint, next);
     }
 
     /**
@@ -101,6 +102,8 @@ module.exports = (winston) => {
      * @private
      */
     _publish(next) {
+
+      // Handle state changes for the service, the state can change asynchronously
       switch (this._state) {
         case SERVICE_STATE.RUNNING:
           // do nothing
@@ -123,52 +126,156 @@ module.exports = (winston) => {
 
       }
 
-      const NOWISH = this._history.nowish;
-      const TIME = NOWISH.format('hh:mm:ss');
-      const TIME_P1 = NOWISH.clone().add(1, 's').format('hh:mm:ss');
-      const DATE = NOWISH.format('YYYYMMDD');
-      const SQL_STATEMENT = `SELECT trans_${DATE}.id` +
-        ', ticker' +
-        ', time' +
-        ', price' +
-        ', size' +
-        ', exchange_id' +
-        ', condition_code AS cc' +
-        ', suspicious AS sus ' +
-        `FROM trans_${DATE}, tickers ` +
-        `WHERE ((tickers.id = trans_${DATE}.ticker_id) ` +
-        'AND (time >= $stamp AND time < $stampP1)) ' +
-        `ORDER BY trans_${DATE}.id`;
-      const params = { $stamp: TIME, $stampP1: TIME_P1 };
+      const nowish = this._history.nowish;
 
-      this._db.all(SQL_STATEMENT, params, (err, rows) => {
+      if (this._cast.endPoints.length <= 0) {
+        // skip out early if there are no end points.
+        w.silly('%s: No endpoints registered, not sending.', nowish.format('YYYY-MM-DDThh:mm:ss'));
+        return;
+      }
+
+      const db = this._db;
+      const cs = this._cast;
+
+      // Build up some constants used in SQL queries
+      const time = nowish.format('hh:mm:ss');
+      const date = nowish.format('YYYYMMDD');
+
+      const params = { $stamp: time };
+
+      const SQL_TIME_COND = ' (time = $stamp) ';
+
+      const sql_ttable = `trans_${date}`;
+
+      const sql_ticker_counts = 'SELECT ticker' +
+        ', ticker_id' +
+        ', COUNT(*) AS cnt ' +
+        `FROM ${sql_ttable}, tickers ` +
+        `WHERE ${SQL_TIME_COND} ` +
+          'AND tickers.id = ticker_id ' +
+        'GROUP BY ticker_id ' +
+        'ORDER BY ticker_id ASC';
+
+      const CHUNK_SIZE = this._chunkSize;
+
+      // called after all data is sent
+      let rnext = err => {
         if (!!err) {
-          throw err;
-        }
-
-        let rowsL = rows.length;
-        let strs = rows.map(r => (`${cast_serv.idx(r.id)}::${r.ticker},${TIME},${r.price},${r.size},${r.exchange_id},${r.cc},${r.sus}`));
-
-        let chunks = _.chunk(strs, this._chunkSize);
-
-        let rnext = _.after(chunks.length, err => {
-          if (!!err) {
+          if (_.isFunction(next)) {
+            next(err);
+          } else {
             throw err;
           }
+        }
 
-          w.debug(`Published (${rowsL}) transactions: ${TIME}`);
+        w.debug('%s: Processed and sent data', time);
 
-          if (_.isFunction(next)) {
-            next();
+        if (_.isFunction(next)) {
+          next();
+        }
+      };
+
+      // Query all of the tickers and how many they have for the current time range
+      // This lets a receiving service get a nicer idea of what is loaded into the packets
+      db.all(sql_ticker_counts, params, (err, tickerRows) => {
+        if (!!err) {
+          w.warn('Failure in sql execution: %s', sql_ticker_counts);
+          rnext(err);
+          return;
+        }
+
+        function runRows(idx) {
+
+          if (idx >= tickerRows.length) {
+            // recursive break condition
+            rnext();
+            return;
           }
-        });
 
-        chunks.forEach(chk => {
-          let rbuffer = new Buffer(_.reduce(chk, (s, str) => (s + '\n' + str)), 'ascii');
+          // iterate over the rows until we get either a chunk larger than `this._chunkSize` OR run out
+          // we also package up the ticker IDs so that we can query in smaller chunks
 
-          this._cast_serv.send(rbuffer, rnext);
-        });
+          const min_ticker = tickerRows[idx]['ticker_id'];
+          let rowCount = 0;
+          let max_ticker = 0;
+          let tickers = [];
+          const fidx = idx;
+          while (idx < tickerRows.length && rowCount <= CHUNK_SIZE) {
+            const r = tickerRows[idx];
+
+            rowCount += r['cnt'];
+            max_ticker = r['ticker_id'];
+            tickers.push(r['ticker']);
+
+            idx++;
+          }
+
+          // if we break out, we have enough ticker_ids
+          w.debug('%s: Packaging %d/%d tickers: (%d, %d) together',
+            time,
+            idx - fidx, tickerRows.length,
+            min_ticker, max_ticker);
+
+          // Get all of the ticker data, we ignore the `time` field because it's already known from the package
+          const sql_get_data = `SELECT ${sql_ttable}.id` +
+            ', ticker' +
+            ', price' +
+            ', size' +
+            ', exchange_id' +
+            ', condition_code AS cc' +
+            ', suspicious AS sus ' +
+            `FROM ${sql_ttable}, tickers ` +
+            `WHERE (tickers.id = ${sql_ttable}.ticker_id) ` +
+              `AND ${SQL_TIME_COND} ` +
+              'AND (ticker_id BETWEEN $min_ticker AND $max_ticker) ' +
+            `ORDER BY ${sql_ttable}.id`;
+          const tickParams = {
+            $min_ticker: min_ticker,
+            $max_ticker: max_ticker
+          };
+
+          db.all(sql_get_data, _.extend(params, tickParams), (err, dataRows) => {
+            if (!!err) {
+              w.warn('Failure in sql execution: %s', sql_get_data);
+              rnext(err);
+              return;
+            }
+
+            // Build the json payload and send it to the subscribed services
+            const jsonData = {
+              when: nowish.format('YYYY-MM-DDThh:mm:ss'),
+              tickers: tickers,
+              payload: dataRows
+            };
+
+            cs.send(jsonData, err => {
+              if (!!err) {
+                rnext(err);
+              } else {
+                // now we recursively call the runRows function
+                runRows(idx);
+              }
+            });
+          });
+        }
+
+        runRows(0);
       });
+
+    }
+
+
+    /**
+     * Format the JSON for a signal
+     * @param {String} signal Message to pass
+     * @return {{signal: String, nowish: String}}
+     * @private
+     */
+    _sigMsg(signal) {
+      return {
+        signal: signal,
+        nowish: this._history.nowish.format('YYYY-MM-DDThh:mm:ss')
+      };
     }
 
     /**
@@ -176,24 +283,31 @@ module.exports = (winston) => {
      * @callback next
      */
     start(next) {
-      if (this._state != SERVICE_STATE.NEW) {
-        w.error(`Starting already started service (${this._state})`);
+      if (this._state != SERVICE_STATE.NEW && this._state != SERVICE_STATE.STOPPED) {
+        const msg = `Trying to start already started service (${this._state})`;
+        const err = new Error(msg);
 
-        return;
+        if (_.isFunction(next)) {
+          next(err);
+        } else {
+          w.error(msg);
+          throw err;
+        }
+      } else {
+        this._cast.start(() => {
+          this._cast.signal(this._sigMsg('START'), err => {
+            this._state = SERVICE_STATE.STARTED;
+            w.info('Started publishing service');
+
+            this._publishInterval = setInterval(_.bind(this._publish, this), 1000);
+
+            if (_.isFunction(next)) {
+              next(err);
+            }
+          });
+        });
       }
 
-      this._cast_serv.start(() => {
-        this._cast_serv.signal('START', () => {
-          this._state = SERVICE_STATE.STARTED;
-          w.info('Started publishing service');
-
-          this._publishInterval = setInterval(_.bind(this._publish, this), 1000);
-
-          if (_.isFunction(next)) {
-            next();
-          }
-        });
-      });
 
     }
 
@@ -208,7 +322,13 @@ module.exports = (winston) => {
         clearInterval(this._publishInterval);
         this._publishInterval = null;
 
-        this._cast_serv.signal('STOPPED', next);
+        this._cast.signal(this._sigMsg('STOPPED'), err => {
+          this._state = SERVICE_STATE.STOPPED;
+
+          if (_.isFunction(next)) {
+            next(err);
+          }
+        });
       };
 
       this._state = SERVICE_STATE.STOPPING;
@@ -216,8 +336,8 @@ module.exports = (winston) => {
 
     /**
      * Reset the Service, stopping the current sending
-     * @param [START] {moment} Time to start the service
-     * @callback [next] Called after the reset completes
+     * @param {moment} [START] Time to start the service
+     * @param {function} [next] Called after the reset completes
      */
     reset(START, next) {
       if (!_.isUndefined(START)) {
@@ -234,7 +354,9 @@ module.exports = (winston) => {
         }
       }
 
-      const cb = () => {
+      const cb = err => {
+        if (!!err) throw err;
+
         this._history = new history.History(START);
 
         this.start(next);
@@ -249,10 +371,6 @@ module.exports = (winston) => {
     }
   }
 
-  return {
-    Service: Service,
-
-    STATE: SERVICE_STATE
-  };
+  return Service;
 };
 

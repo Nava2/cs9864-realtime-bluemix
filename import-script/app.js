@@ -1,18 +1,17 @@
 'use strict';
 
-const util    = require('util');
-const _       = require('lodash');
 const assert  = require('assert');
-const csv     = require('csv-stream');
+const util    = require('util');
 const fs      = require('fs');
-const sqlite3 = require('sqlite3').verbose();
+const spawn = require('child_process').spawn;
+
+const _       = require('lodash');
+const csv     = require('csv-stream');
 const moment  = require('moment');
-
-const ref = require('./ref');
-
+const sqlite3 = require('sqlite3').verbose();
 const w = require('winston');
 
-const spawn = require('child_process').spawn;
+const ref = require('./ref');
 
 const argv = require('minimist')(process.argv.slice(2), {
   boolean: ['clean-db', 'nuke-db', 'quiet'],
