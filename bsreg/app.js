@@ -119,7 +119,7 @@ function indexfields(bsnamefield, bsurlfield) {
 // eg. http://localhost:6004/addbs?name=s1&url=http://www.ss.com
 // can accept different bsname refering to the same url.
 // register a new business service
-app.get('/addbs', function (req, res) {
+app.put('/add', function (req, res) {
     regname = req.query.name;
     regurl = req.query.url;
 
@@ -178,9 +178,9 @@ app.get('/listallbs', function (req, res) {
     }
 });
 
-//eg. http://localhost:6004/getbsname?url=http://www.ss3.com
+//eg. http://localhost:6004/getname?url=http://www.ss3.com
 // return the name given the url
-app.get('/getbsname', function (req, res) {
+app.get('/getname', function (req, res) {
     regurl = req.query.url;
     var m_arr=[];
     if (db) {
@@ -204,9 +204,9 @@ app.get('/getbsname', function (req, res) {
     }
 });
 
-// eg. http://localhost:6004/getbsurl?name=s1
+// eg. http://localhost:6004/geturl?name=s1
 // return the url given the name
-app.get('/getbsurl', function (req, res) {
+app.get('/geturl', function (req, res) {
     regname = req.query.name;
     var m_arr=[];
     if (db) {
@@ -243,12 +243,11 @@ app.get('/listalldocs', function(req,res){
 })
 
 
-//delete bs
-app.get('/delbsbyname', function (req, res) {
+//delete the service by name
+app.delete('/byname', function (req, res) {
     regname = req.query.name;
     var m_arr=[];
     if (db) {
-        // check deplicated bsname
         query={};
         query[bsnamefield]=regname;
         db.find({selector:query}, function(er, result) {
@@ -271,12 +270,11 @@ app.get('/delbsbyname', function (req, res) {
     }
 });
 
-//
-app.get('/delbsbyurl', function (req, res) {
+// delete the service by url
+app.delete('/byurl', function (req, res) {
     regurl = req.query.url;
     var m_arr=[];
     if (db) {
-        // check deplicated bsname
         query={};
         query[bsurlfield]=regurl;
         db.find({selector:query}, function(er, result) {
@@ -317,3 +315,6 @@ app.listen(appEnv.port, '0.0.0.0', function () {
 
 //a   u1 u2
 
+
+
+// put /dellete
