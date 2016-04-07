@@ -61,7 +61,7 @@ module.exports = (winston) => {
      * @param {EndPoint} endPoint Search term
      * @returns {boolean} True if registered
      */
-    endPointRegistered(endPoint) {
+    isEndPointRegistered(endPoint) {
       return this._epIdx(endPoint) > -1;
     }
 
@@ -94,25 +94,6 @@ module.exports = (winston) => {
     }
 
     /**
-     * Compress a string into a buffer
-     * @param msg
-     * @param next
-     * @private
-     */
-    _compress(msg, next) {
-      assert(!!msg && _.isFunction(next));
-
-      let buff = new Buffer(msg, 'ascii');
-      zlib.gzip(buff, (err, cbuff) => {
-        if (_.isFunction(next)) {
-          next(err, cbuff);
-        } else if (!!err) {
-          throw err;
-        }
-      });
-    }
-
-    /**
      * Sends a compressed JSON object to the end points
      * @param jsonMsg
      * @param next
@@ -123,28 +104,25 @@ module.exports = (winston) => {
         w.silly(`Sent message to all endpoints, errors: ${errorHappened}`);
       });
 
-      this._compress(JSON.stringify(jsonMsg), (err, buff) => {
-        this._endpoints.forEach(ep => {
-          const enc = buff.toString('base64');
-          ep.send({
-            path: '/data',
-            data: enc,
-            next: err => {
-              if (!!err) {
-                if (this.endPointRegistered(ep)) {
-                  // Only do this if the endPoint is still registered, its suuuper spammy as 15+ errors blow out
-                  // the logs.
-                  w.warn(`Failed to send to: ${ep}, removing.\nError: ${err}`);
-                  this.unregisterEndPoint(ep);
-                }
-
-                // still register that it happened though, for record keeping. :D
-                errorHappened = true;
+      this._endpoints.forEach(ep => {
+        ep.send({
+          path: '/data',
+          data: jsonMsg,
+          next: err => {
+            if (!!err) {
+              if (this.isEndPointRegistered(ep)) {
+                // Only do this if the endPoint is still registered, its suuuper spammy as 15+ errors blow out
+                // the logs.
+                w.warn(`Failed to send to: ${ep}, removing.\nError: ${err}`);
+                this.unregisterEndPoint(ep);
               }
 
-              nafter();
+              // still register that it happened though, for record keeping. :D
+              errorHappened = true;
             }
-          });
+
+            nafter();
+          }
         });
       });
 

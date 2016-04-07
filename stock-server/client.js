@@ -36,7 +36,10 @@ const client = new lib.StockClient({
   secret: config.secret,
   handlers: {
     data: (data) => {
-      w.debug('%s: Received %d rows from %d tickers.', data.when, data.payload.length, data.tickers.size);
+      data.payload((err, payload) => {
+        w.debug('%s: Received %d rows from %d tickers.', data.when, payload.length, data.tickers.size);
+      });
+
     }
   }
 });
@@ -49,11 +52,12 @@ let server = app.listen(4000, () => {
 
     w.info("Connected!");
 
-    client.restart(err => {
-      if (!!err) throw err;
-      // started?
-      w.info("Restarted server!");
-    });
+    // Uncomment to restart the server each time!
+    // client.restart(err => {
+    //   if (!!err) throw err;
+    //   // started?
+    //   w.info("Restarted server!");
+    // });
 
     // Wait 15s then close the connection
     setTimeout(() => {

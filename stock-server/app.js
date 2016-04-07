@@ -26,6 +26,7 @@ if (app.get('env') === 'development') {
 } else if (!!process.env.LOG_LEVEL) {
   w.level = process.env.LOG_LEVEL;
 }
+w.add(w.transports.File, { filename: './server-log.log' });
 
 app.use(logger('dev'));
 app.use(bodyParser.json());

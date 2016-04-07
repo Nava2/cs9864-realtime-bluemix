@@ -21,6 +21,70 @@ module.exports = (winston) => {
     w.level = process.env.LOG_LEVEL;
   }
 
+  /**
+   * Specialized class that handles memoizing a compressed payload
+   */
+  class Data {
+
+    /**
+     * Accepts the JSON format passed by the stock server.
+     * @param {{when: String, tickers: String[], payload: String}} json JSON data from Stock Server
+     */
+    constructor(json) {
+
+      this._when = moment(json.when);
+      this._tickers = new Set(json.tickers);
+
+      this._payload = {
+        buff: new Buffer(json.payload, 'base64'),
+        decoded: undefined
+      };
+    }
+
+    get when() { return this._when; }
+    get tickers() { return this._tickers; }
+
+    /**
+     * Get the payload of the data, it will decoded it if necessary. This method memoizes the value so it is only
+     * decoded once.
+     *
+     * @param {function} next Callback passed an error if any
+     */
+    payload(next) {
+      if (!!this._payload.buff) {
+        zlib.gunzip(this._payload.buff, (err, buff) => {
+          if (!!err) {
+            if (_.isFunction(next)) {
+              next(err);
+            } else {
+              throw err;
+            }
+          } else {
+            const jsonStr = buff.toString('ascii');
+            this._payload.decoded = JSON.parse(jsonStr);
+
+            delete this._payload.buff;
+
+            if (_.isFunction(next)) {
+              next(null, this._payload.decoded);
+            }
+          }
+        });
+      } else if (!!this._payload.decoded) {
+        if (_.isFunction(next)) {
+          next(null, this._payload.decoded);
+        }
+      } else {
+        let err = new TypeError('No payload buffer or decoded value?');
+        if (_.isFunction(next)) {
+          next(err);
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
+
   class Client {
 
     /**
@@ -41,7 +105,7 @@ module.exports = (winston) => {
      * Handler when data is received, it gets a buffer of uncompressed data.
      * @callback DataCallback
      *
-     * @param {{when: moment, tickers: Set, payload: {cc: String, exchange_id: String, id: Number, price: Number, size: Number, suspect: Boolean, ticker: String}[]} data Data from the streaming service
+     * @param {Data} data Data from the streaming service
      * @param {express~Request} req Information about original data buffer
      */
 
@@ -81,8 +145,10 @@ module.exports = (winston) => {
           },
 
           data: (data, req) => {
-            console.log('[%s]: Received %d rows\n',
-              req.ip, data.payload.length);
+            data.payload((err, payload) => {
+              console.log('[%s]: Received %d rows\n',
+                req.ip, payload.length);
+            });
           }
         }
       });
@@ -118,23 +184,11 @@ module.exports = (winston) => {
 
       app.post('/data', (req, resp) => {
 
-        let cbuff = new Buffer(req.body.payload, 'base64');
-        zlib.gunzip(cbuff, (err, buff) => {
-          if (!!err) {
-            handlers.error(resp, err);
-          } else {
-            resp.json({
-              success: true
-            });
-
-            const jsonStr = buff.toString('ascii');
-            let obj = JSON.parse(jsonStr);
-            obj.when = moment(obj.when, 'YYYY-MM-DDThh:mm:ss');
-            obj.tickers = new Set(obj.tickers);
-            handlers.data(obj, req);
-          }
+        resp.json({
+          success: true
         });
 
+        handlers.data(new Data(req.body), req);
       });
 
       app.post('/signal', (req, resp) => {

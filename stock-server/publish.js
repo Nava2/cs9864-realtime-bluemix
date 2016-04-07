@@ -1,5 +1,7 @@
 'use strict';
 
+const zlib = require('zlib');
+
 const _ = require('lodash');
 const sqlite3 = require('sqlite3');
 const moment = require('moment');
@@ -244,18 +246,28 @@ module.exports = (winston) => {
             // Build the json payload and send it to the subscribed services
             const jsonData = {
               when: nowish.format('YYYY-MM-DDThh:mm:ss'),
-              tickers: tickers,
-              payload: dataRows
+              tickers: tickers
             };
 
-            cs.send(jsonData, err => {
+            let buff = new Buffer(JSON.stringify(dataRows), 'ascii');
+            zlib.gzip(buff, (err, cbuff) => {
               if (!!err) {
                 rnext(err);
               } else {
-                // now we recursively call the runRows function
-                runRows(idx);
+                jsonData.payload = cbuff.toString('base64');
+                cs.send(jsonData, err => {
+                  if (!!err) {
+                    rnext(err);
+                  } else {
+                    // now we recursively call the runRows function
+                    runRows(idx);
+                  }
+                });
               }
+
             });
+
+
           });
         }
 
