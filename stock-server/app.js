@@ -4,16 +4,13 @@ const url = require('url');
 
 const express = require('express');
 const path = require('path');
-const favicon = require('serve-favicon');
-const logger = require('morgan');
-const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const compression = require('compression');
 
 const w = require('winston');
 const _ = require('lodash');
 const sqlite3 = require('sqlite3');
 const moment = require('moment');
-const ipaddr = require('ipaddr.js');
 
 const cfg = require('./config.json');
 
@@ -23,16 +20,16 @@ const app = express();
 
 if (app.get('env') === 'development') {
   w.level = 'debug';
-} else if (!!process.env.LOG_LEVEL) {
-  w.level = process.env.LOG_LEVEL;
+} else if (!!process.env['LOG_LEVEL']) {
+  w.level = process.env['LOG_LEVEL'];
 }
+
 w.add(w.transports.File, { filename: './server-log.log' });
 
-app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(compression());
 
 const PublishService = require('./publish')(w);
 
@@ -42,7 +39,6 @@ function infoJson() {
 
   return {
     'port': cfg.port,
-    'address': cfg.inetAddress,
     'nowish': pubserv.history.nowish,
     'state': pubserv.state
   };

@@ -1,10 +1,7 @@
 {
-  "name": "stock-server",
+  "name": "stock-client",
   "version": "0.0.1",
   "private": true,
-  "scripts": {
-    "start": "node ./bin/www"
-  },
   "dependencies": {
     "body-parser": "~1.13.2",
     "compression": "^1.6.1",
@@ -13,7 +10,6 @@
     "lodash": "^4.6.1",
     "moment": "^2.12.0",
     "request": "^2.69.0",
-    "sqlite3": "^3.1.2",
     "winston": "^2.2.0"
   }
 }
