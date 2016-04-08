@@ -1,5 +1,8 @@
 # Project specific
 *.csv
+*~
+
+config.json
 
 ## Configuration:
 cloudant.json

@@ -1,1 +1,3 @@
 cloudant.json
+*.db
+*.db-journal
