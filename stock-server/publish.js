@@ -249,7 +249,12 @@ module.exports = (winston) => {
               tickers: tickers
             };
 
-            let buff = new Buffer(JSON.stringify(dataRows), 'ascii');
+            const payload = _.chain(dataRows)
+              .groupBy(r => (r.ticker))
+              .mapValues(v => (v.map(v2 => (_.omit(v2, ['ticker'])))))
+              .value();
+
+            let buff = new Buffer(JSON.stringify(payload), 'ascii');
             zlib.gzip(buff, (err, cbuff) => {
               if (!!err) {
                 rnext(err);
