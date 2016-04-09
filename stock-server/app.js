@@ -38,9 +38,7 @@ const PublishService = require('./publish')(w);
 const pubserv = new PublishService(cfg);
 
 function infoJson() {
-
   return {
-    'port': cfg.port,
     'nowish': pubserv.history.nowish,
     'state': pubserv.state
   };
