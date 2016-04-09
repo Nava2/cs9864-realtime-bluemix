@@ -129,7 +129,11 @@ module.exports = (winston) => {
 
       config = _.defaultsDeep(config, {
         local: {
-          href: null
+          href: {
+            protocol: 'http:',
+            port: 80,
+            pathname: '/client'
+          }
         },
         remote: {
           href: url.parse('http://cs9864-2016.csd.uwo.ca:80/'),
@@ -201,11 +205,7 @@ module.exports = (winston) => {
         handlers.status(req.body.signal, req);
       });
 
-      const that = this;
-      // Install the sub-app
-      config.app.on('listening', function () {
-        config.app.use(that._local.pathname, app);
-      });
+      config.app.use(this._local.pathname, app);
     }
 
     get app() { return this._app; }
@@ -226,7 +226,10 @@ module.exports = (winston) => {
     connect(next) {
       const req = {
         uri: this._remoteUrl('/register'),
-        json: { href: this._local, verb: 'POST' },
+        json: {
+          href: (!!this._local ? this._local : undefined),
+          verb: 'POST'
+        },
         timeout: this.timeout
       };
 
