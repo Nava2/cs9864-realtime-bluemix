@@ -39,7 +39,7 @@ const pubserv = new PublishService(cfg);
 
 function infoJson() {
   return {
-    'nowish': pubserv.history.nowish,
+    'nowish': pubserv.history.nowish.format('YYYY-MM-DDThh:mm:ss'),
     'state': pubserv.state
   };
 }
