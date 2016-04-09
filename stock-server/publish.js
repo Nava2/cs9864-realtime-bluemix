@@ -56,7 +56,7 @@ module.exports = (winston) => {
 
     constructor(config) {
       config = _.defaults(config, {
-        'chunk-size': 1000
+        'chunk-size': 1250
       });
 
       this._db = new sqlite3.Database(config.database);
