@@ -5,6 +5,7 @@ const url = require('url');
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
+const logger = require('morgan');
 const compression = require('compression');
 
 const w = require('winston');
@@ -30,6 +31,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(compression());
+app.use(logger('dev'));
 
 const PublishService = require('./publish')(w);
 
