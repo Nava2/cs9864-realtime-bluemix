@@ -39,6 +39,49 @@ getcollection(cloudant_cred.collectionname)
 listIndexes(cloudant_cred.collectionname)
 indexfields(cloudant_cred.bsnamefield, cloudant_cred.bsurlfield)
 
+// if (db) {
+//     query = {};
+//     query = {};
+//     query["valid"] = 1;
+//     query[bsnamefield] = new Date();
+//     query[bsurlfield] = "try";
+//     db.insert(query);
+// }
+
+// function dateback(date, interval) {
+//     var odate = new Date(date);
+//     odate = odate.valueOf();
+//     odate = odate - interval * 24 * 60 * 60 * 1000;
+//     odate = new Date(odate);
+//     //console.log(odate.getFullYear() + "/" + (odate.getMonth() + 1) + "/" + odate.getDate() );
+//     return odate;
+// }
+
+// var today = new Date();
+// b=dateback(today, 1);
+// console.log('---'+b);
+
+// if (db) {
+//     query = {};
+//     query = {};
+//     query["valid"] = 1;
+//     query[bsnamefield] = b;
+//     query[bsurlfield] = "try";
+//     db.insert(query);
+// }
+
+// query={};
+// query[bsnamefield]={"$lte" : b };
+// db.find({selector:query}, function(er, result) {
+//     for (var i = 0; i < result.docs.length; i++) {
+//         data={};
+//         data[1]=result.docs[i][bsurlfield]
+//         data[2]=result.docs[i][bsnamefield]
+//         console.log('nice try: '+data[1]+'----'+data[2]);
+//     }
+// });
+
+
 // get the collection. create it if it does not exist.
 function getcollection(collectionname) {
     restler.put(cloudant_cred.host + '/' + collectionname, {
