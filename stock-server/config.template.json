@@ -1,6 +1,4 @@
 {
-  "interface": "eth0",
-  "port": 1111111,
   "secret": "secret-passphrase",
   "database": "database-path",
   "loader": {

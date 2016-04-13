@@ -1,14 +1,14 @@
 'use strict';
 
+const url = require('url');
+
 const express = require('express');
 const path = require('path');
-const favicon = require('serve-favicon');
 const logger = require('morgan');
-const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 
-const w = require('winston');
 const _ = require('lodash');
+const w = require('winston');
 const moment = require('moment');
 
 const config = require('./config.json');
@@ -22,22 +22,27 @@ if (app.get('env') === 'development') {
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(logger('dev'));
 
 const lib = require('./stock-client')(w);
 
 const client = new lib.StockClient({
   app: app,
   local: {
-    baseRoute: '/client'
+    href: config.local.href
   },
-  remote: 'http://cs9864-2016.csd.uwo.ca:80/',
-  secret: config.secret,
+  remote: {
+    href: config.remote.href,
+    secret: config.remote.secret
+  },
   handlers: {
     data: (data) => {
       data.payload((err, payload) => {
-        w.debug('%s: Received %d rows from %d tickers.', data.when, payload.length, data.tickers.size);
+        const rows = _.reduce(payload, (len, arr) => {
+          return len + arr.length
+        }, 0);
+        w.debug('%s: Received %d rows from %d tickers.', data.when, rows, data.tickers.size);
       });
 
     }
@@ -53,11 +58,11 @@ let server = app.listen(4000, () => {
     w.info("Connected!");
 
     // Uncomment to restart the server each time!
-    // client.restart(err => {
-    //   if (!!err) throw err;
-    //   // started?
-    //   w.info("Restarted server!");
-    // });
+    client.restart(err => {
+      if (!!err) throw err;
+      // started?
+      w.info("Restarted server!");
+    });
 
     // Wait 15s then close the connection
     setTimeout(() => {

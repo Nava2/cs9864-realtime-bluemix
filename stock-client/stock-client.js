@@ -12,13 +12,13 @@ const _ = require('lodash');
 
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const compression = require('compression');
 
 module.exports = (winston) => {
 
   const w = (!!winston ? winston : require('winston'));
-  if (!!process.env.LOG_LEVEL) {
-    w.level = process.env.LOG_LEVEL;
+  if (!!process.env['LOG_LEVEL']) {
+    w.level = process.env['LOG_LEVEL'];
   }
 
   /**
@@ -113,10 +113,11 @@ module.exports = (winston) => {
      * Create a new client within the express app, `config.app`.
      *
      * @param {express} config.app Parent express application
-     * @param {String} [config.remote='http://cs9864-2016.csd.uwo.ca:80/'] Address of endpoint
+     * @param {String|URL} [config.local.href='/'] Base for all routes for subapp to be installed, slash terminated
+     *
+     * @param {String|URL} [config.remote.href='http://cs9864-2016.csd.uwo.ca:80/'] Address of endpoint
+     * @param {String} [config.remote.secret] {String} Secret token used for server commands, if not specified, server commands will error
      * @param {Number} [config.timeout=15000] Milliseconds to wait between requests
-     * @param {String} [config.local.baseRoute='/'] Base for all routes for subapp to be installed, slash terminated
-     * @param {String} [config.secret] {String} Secret token used for server commands, if not specified, server commands will error
      *
      * @param {ErrorCallback} [config.handlers.error]
      * @param {StatusCallback} [config.handlers.status]
@@ -128,9 +129,16 @@ module.exports = (winston) => {
 
       config = _.defaultsDeep(config, {
         local: {
-          baseRoute: '/'
+          href: {
+            protocol: 'http:',
+            port: 80,
+            pathname: '/client'
+          }
         },
-        remote: url.parse('http://cs9864-2016.csd.uwo.ca:80/'),
+        remote: {
+          href: url.parse('http://cs9864-2016.csd.uwo.ca:80/'),
+          secret: null
+        },
         timeout: 15000,
         handlers: {
           error: (resp, err) => {
@@ -153,13 +161,10 @@ module.exports = (winston) => {
         }
       });
 
-      this._remote = (_.isString(config.remote) ? url.parse(config.remote) : config.remote);
-      this._local = {
-        protocol: 'http:',
-        pathname: config.local.baseRoute
-      };
+      this._remote = (_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
+      this._local = (_.isString(config.local.href) ? url.parse(config.local.href) : config.local.href);
 
-      this._secret = config.secret;
+      this._secret = config.remote.secret;
 
       /**
        * How long to wait before timing out with requests (milliseconds)
@@ -179,6 +184,7 @@ module.exports = (winston) => {
       this._app = express();
       const app = this._app;
       app.use(bodyParser.json());
+      app.use(compression());
       
       const handlers = this._handlers;
 
@@ -199,23 +205,7 @@ module.exports = (winston) => {
         handlers.status(req.body.signal, req);
       });
 
-      const old = config.app.listen;
-      const that = this;
-      // Install the sub-app
-      config.app.listen = function (port, hostname, backlog, callback) {
-        let _port = port;
-        let _hostname = _.isString(hostname) ? hostname : undefined;
-        let _backlog = _.isNumber(hostname) ? hostname : (_.isNumber(backlog) ? backlog : undefined);
-        let _callback = _.isFunction(hostname) ? hostname : (_.isFunction(backlog) ? backlog : (_.isFunction(callback) ? callback : function() {}));
-
-        return old.call(this, _port, _hostname, _backlog, function () {
-          config.app.use(config.local.baseRoute, app);
-
-          that._local.port = _port;
-
-          _callback.apply(this, arguments);
-        });
-      };
+      config.app.use(this._local.pathname, app);
     }
 
     get app() { return this._app; }
@@ -236,7 +226,10 @@ module.exports = (winston) => {
     connect(next) {
       const req = {
         uri: this._remoteUrl('/register'),
-        json: { href: this._local, verb: 'POST' },
+        json: {
+          href: (!!this._local ? this._local : undefined),
+          verb: 'POST'
+        },
         timeout: this.timeout
       };
 
