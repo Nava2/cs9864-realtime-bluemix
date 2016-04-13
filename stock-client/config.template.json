@@ -1,9 +1,19 @@
 {
   "local": {
-    "href": "http://myhost.example.com:8485/client"
+    "href": {
+      "port": 9495,
+      "pathname": "/client"
+    }
   },
   "remote": {
     "href": "http://my-stock-server.example.com/",
-    "secret": "secret-passphrase"
+    "secret": "secret-passphrase",
+    "timeout": 15000
+  },
+
+  "cloudant": {
+    "url": "http://my-cloudant-store.bluemix.net/",
+    "database": "database-name",
+    "refresh-rate": 30000
   }
 }
