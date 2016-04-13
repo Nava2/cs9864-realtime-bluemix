@@ -18,6 +18,8 @@ module.exports = (winston) => {
 
       config = _.defaults(config, url.parse(config.href), {
         verb: 'POST',
+        protocol: 'http:',
+        port: 80,
         pathname: '/'
       });
 

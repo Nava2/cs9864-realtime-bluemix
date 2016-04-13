@@ -1,0 +1,9 @@
+{
+  "local": {
+    "href": "http://myhost.example.com:8485/client"
+  },
+  "remote": {
+    "href": "http://my-stock-server.example.com/",
+    "secret": "secret-passphrase"
+  }
+}

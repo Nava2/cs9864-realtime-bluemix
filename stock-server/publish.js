@@ -56,7 +56,7 @@ module.exports = (winston) => {
 
     constructor(config) {
       config = _.defaults(config, {
-        'chunk-size': 1000
+        'chunk-size': 1250
       });
 
       this._db = new sqlite3.Database(config.database);
@@ -249,7 +249,12 @@ module.exports = (winston) => {
               tickers: tickers
             };
 
-            let buff = new Buffer(JSON.stringify(dataRows), 'ascii');
+            const payload = _.chain(dataRows)
+              .groupBy(r => (r.ticker))
+              .mapValues(v => (v.map(v2 => (_.omit(v2, ['ticker'])))))
+              .value();
+
+            let buff = new Buffer(JSON.stringify(payload), 'ascii');
             zlib.gzip(buff, (err, cbuff) => {
               if (!!err) {
                 rnext(err);
