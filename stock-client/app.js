@@ -13,7 +13,7 @@ const bodyParser = require('body-parser');
 const w = require('winston');
 const moment = require('moment');
 
-const config = require('./config.json');
+const config = require('./config');
 
 const app = express();
 
@@ -35,7 +35,6 @@ const lib = require('./lib/stock-client')(w);
 const register = require('./routes/register')(w);
 
 app.use(register);
-
 
 const mgr =  new EP.Manager(config.cloudant);
 app.locals.mgr = mgr;

@@ -17,9 +17,7 @@ module.exports = (winston) => {
   };
 
   class Server {
-    static idx(i) {
-      return ("000000" + i.toString(16)).substr(-6);
-    }
+    
 
     constructor(config) {
       config = _.defaults(config, {
@@ -67,6 +65,15 @@ module.exports = (winston) => {
 
     registerEndPoint(endPoint, next) {
       if (this._epIdx(endPoint) === -1) {
+        endPoint.onFailure = (ep) => {
+          if (this.isEndPointRegistered(ep)) {
+            // Only do this if the endPoint is still registered, its suuuper spammy as 15+ errors blow out
+            // the logs.
+            w.warn(`Removing endpoint, ${ep.toString()} due to failure.`);
+            this.unregisterEndPoint(ep);
+          }
+        };
+
         this._endpoints.push(endPoint);
       }
 
@@ -110,13 +117,7 @@ module.exports = (winston) => {
           data: jsonMsg,
           next: err => {
             if (!!err) {
-              if (this.isEndPointRegistered(ep)) {
-                // Only do this if the endPoint is still registered, its suuuper spammy as 15+ errors blow out
-                // the logs.
-                w.warn(`Failed to send to: ${ep}, removing.\nError: ${err}`);
-                this.unregisterEndPoint(ep);
-              }
-
+              w.silly("Failure sending: %s {%s}", err.error, ep.toString());
               // still register that it happened though, for record keeping. :D
               errorHappened = true;
             }
@@ -131,9 +132,15 @@ module.exports = (winston) => {
       }
     }
 
+    /**
+     * Send a signal message
+     * @param {Object} msg
+     * @param next
+     */
     signal(msg, next) {
+      let errorHappened = false;
       let nafter = _.after(this._endpoints.length, () => {
-        w.silly(`Sent SIGNAL to all end points: ${util.inspect(msg)}`);
+        w.silly(`Sent SIGNAL to all end points: ${msg}, errorHappened: ${errorHappened}`);
       });
 
       // iterate over all of the endpoints
@@ -144,8 +151,9 @@ module.exports = (winston) => {
           data: msg ,
           next: err => {
             if (!!err) {
-              w.warn(`Failed to send to: ${ep}, removing.\nError: ${err}`);
-              this.unregisterEndPoint(ep);
+              w.silly("Failure sending: %s {%s}", err.error, ep.toString());
+              // still register that it happened though, for record keeping. :D
+              errorHappened = true;
             }
 
             nafter();
