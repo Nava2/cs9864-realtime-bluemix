@@ -21,6 +21,11 @@ if (app.get('env') === 'development') {
   w.level = 'debug';
 }
 
+// Handle bluemix requireing a specific port
+if (!!process.env.VCAP_APP_PORT) {
+  config.local.href.port = process.env.VCAP_APP_PORT;
+}
+
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -77,7 +82,6 @@ const client = new lib.StockClient({
   }
 });
 app.locals.stockClient = client;
-
 
 app.listen(config.local.href.port, () => {
   w.info("express started!");
