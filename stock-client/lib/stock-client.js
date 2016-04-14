@@ -33,7 +33,7 @@ module.exports = (winston) => {
     constructor(json) {
 
       this._when = moment(json.when);
-      this._tickers = new Set(json.tickers);
+      this._tickers = json.tickers;
 
       this._payload = {
         buff: new Buffer(json.payload, 'base64'),
@@ -406,7 +406,8 @@ module.exports = (winston) => {
   }
 
   return {
-    StockClient: Client
+    StockClient: Client,
+    Data: Data
   };
 };
 
