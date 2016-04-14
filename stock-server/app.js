@@ -13,9 +13,9 @@ const _ = require('lodash');
 const sqlite3 = require('sqlite3');
 const moment = require('moment');
 
-const cfg = require('./config.json');
+const cfg = require('./config');
 
-const EndPoint = require('./endpoint')(w);
+const EndPoint = require('./lib/endpoint')(w);
 
 const app = express();
 
@@ -33,7 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(compression());
 app.use(logger('dev'));
 
-const PublishService = require('./publish')(w);
+const PublishService = require('./lib/publish')(w);
 
 const pubserv = new PublishService(cfg);
 
@@ -56,7 +56,7 @@ app.get('/now', (req, res, next) => {
 
 app.put('/register', (req, res) => {
   const ep = new EndPoint({
-    href: (!_.isString(req.body.href) ? url.format(_.extend(req.body.href, { hostname: req.ip })) : req.body.href),
+    href: (!_.isString(req.body.href) ? url.format(_.defaults(req.body.href, { hostname: req.ip })) : req.body.href),
     verb: req.body.verb
   });
 
