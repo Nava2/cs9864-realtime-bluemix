@@ -21,10 +21,7 @@ if (app.get('env') === 'development') {
   w.level = 'debug';
 }
 
-// Handle bluemix requireing a specific port
-if (!!process.env.VCAP_APP_PORT) {
-  config.local.href.port = process.env.VCAP_APP_PORT;
-}
+w.info("Configuration: %s", util.inspect(config, { depth: null, colors: true }));
 
 app.use(logger('dev'));
 app.use(bodyParser.json());
@@ -83,19 +80,10 @@ const client = new lib.StockClient({
 });
 app.locals.stockClient = client;
 
-app.listen(config.local.href.port, () => {
+app.listen(process.env.VCAP_APP_PORT || config.local.href.port, () => {
   w.info("express started!");
 
   mgr.init(err => {
-
-    w.debug("AAPL: ", mgr.endPointsFor(['AAPL']));
-
-    const ep = new EP.EndPoint({verb: 'PUT', hostname: 'example.com', port: 4949, pathname: '/datasource'});
-    mgr.addEndPoint({ tickers: ['AAPL', 'IBM', 'AA'], endpoint: ep }, err => {
-      if (!!err) {
-        throw err;
-      }
-    });
 
   });
 

@@ -92,7 +92,7 @@ module.exports = (winston) => {
         }
 
         if (!!err) {
-          w.warn('Error in sending to %s. {e = %s}', this.toString(), err);
+          w.warn('Error sending -> %s. [%s]', path, err);
         }
 
         if (_.isFunction(next)) {
