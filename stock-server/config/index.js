@@ -1,9 +1,11 @@
 'use strict';
 
+const _ = require('lodash');
+
 let config;
-if (!!process.env.VCAP_APP_PORT) {
-  // bluemix
-  config = require('./config.bluemix.json');
+if (_.has(process.env, 'CSD_SERVICE') && !!process.env['CSD_SERVICE']) {
+  // csd server
+  config = require('./config.csd.json');
 } else {
   config = require('./config.local.json');
 }
