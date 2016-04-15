@@ -1,4 +1,5 @@
-config.json
+config/config.local.json
+config/config.bluemix.json
 
 /node_modules
 *.log

@@ -13,7 +13,7 @@ const bodyParser = require('body-parser');
 const w = require('winston');
 const moment = require('moment');
 
-const config = require('./config.json');
+const config = require('./config');
 
 const app = express();
 
@@ -36,7 +36,6 @@ const register = require('./routes/register')(w);
 
 app.use(register);
 
-
 const mgr =  new EP.Manager(config.cloudant);
 app.locals.mgr = mgr;
 
@@ -51,29 +50,32 @@ const client = new lib.StockClient({
   },
   handlers: {
     data: (data) => {
-      data.payload((err, payload) => {
-        const eps = mgr.endPointsFor(data.tickers);
+      const eps = mgr.endPointsFor(data.tickers);
 
-        const onErr = err => {
-          if (!!err) {
-            throw err;
-          }
-        };
+      if (eps.length > 0) {
+        // only decode if necessary
+        data.payload((err, payload) => {
 
-        eps.forEach(e => {
-          const validTickers = _.intersection([e.tickers, data.tickers]);
+          eps.forEach(e => {
+            const validTickers = _.intersection([e.tickers, data.tickers]);
 
-          e.ep.send({
-            path: '/',
-            data: {
-              when: data.when.format('YYYY-MM-DDThh:mm:ss'),
-              tickers: validTickers,
-              payload: _.pick(payload, validTickers)
-            },
-            next: onErr
+            e.ep.send({
+              path: '/',
+              data: {
+                when: data.when.format('YYYY-MM-DDThh:mm:ss'),
+                tickers: validTickers,
+                payload: _.pick(payload, validTickers)
+              },
+              next: err => {
+                if (!!err) {
+                  w.warn(`Failed to send: ${err} {${ep.toString()}}`);
+                }
+              }
+            });
           });
         });
-      });
+      }
+
 
     }
   }

@@ -1,4 +1,5 @@
-config.json
+config.*.json
+!*.template.json
 
 *.log
 
