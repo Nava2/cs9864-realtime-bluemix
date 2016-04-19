@@ -1,9 +1,19 @@
 extends layout
 
 block content
-  h1= title
-  p Displaying Transactions on 2011-01-13 for #{title}
-  
+  h1 Stock Streamer!
+
+  .form-inline
+    .form-group
+        label(for='#ticker-box') Ticker&nbsp;
+        input#ticker-box.form-control(type='text', placeholder='AAPL')
+
+    &nbsp;
+    button#add-ticker.btn.btn-default Add!
+
+  ul#stock-list
+
+
   table.table.table-striped
     thead 
         tr
@@ -13,13 +23,6 @@ block content
             th Price
 
     tbody
-        - var i = 0
-        each row in data
-            tr
-                td #{++i}
-                td #{row.date}
-                td #{row.time}
-                td #{row.price}
 
 
 

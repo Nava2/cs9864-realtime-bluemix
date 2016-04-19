@@ -20,7 +20,7 @@ module.exports = (winston) => {
       verb: req.body.verb
     });
 
-    this.locals.mgr.addEndPoint({
+    req.app.locals.mgr.addEndPoint({
       tickers: req.body.tickers,
       endpoint: ep
     }, err => {
@@ -45,7 +45,7 @@ module.exports = (winston) => {
       verb: req.body.verb
     });
 
-    this.locals.mgr.removeEndpoint(ep, err => {
+    req.app.locals.mgr.removeEndpoint(ep, err => {
       if (!!err) {
         res.status(403).json({
           success: false,

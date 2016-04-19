@@ -1,3 +1,5 @@
+'use strict';
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
@@ -5,12 +7,19 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
-const Cloudant = require('cloudant');
-const cloudant_cred = require('./cloudant.json').credentials;
-const cloudant = Cloudant(cloudant_cred.url);
+const url = require('url');
+const util = require('util');
 
-var routes = require('./routes/index')(cloudant);
-var users = require('./routes/users');
+const _ = require('lodash');
+const w = require('winston');
+const request = require('request');
+
+const config = require('./config');
+
+const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
+
+var index = require('./routes/index')(w);
+var api = require('./routes/api')(w);
 
 var app = express();
 
@@ -26,8 +35,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', routes);
-app.use('/users', users);
+app.use('/', index);
+app.use('/api', api);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -60,5 +69,25 @@ app.use(function(err, req, res, next) {
   });
 });
 
+app.listen(process.env.VCAP_APP_PORT || config.local.href.port, () => {
+  w.info("express started!");
 
+  request.put({
+    url: remoteUrl + 'register',
+    json: {
+      href: config.local.href,
+      verb: config.local.verb,
+      tickers: []
+    }
+  }, (err, res) => {
+
+    const body = res.body;
+    if (!!body.success) {
+      // successfully registered :3
+      
+
+    }
+  });
+
+});
 module.exports = app;

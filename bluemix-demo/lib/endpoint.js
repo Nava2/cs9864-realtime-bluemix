@@ -1,0 +1,1 @@
+/Users/kevin/dev/cs9864/stock-client/lib/endpoint.js
