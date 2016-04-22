@@ -38,6 +38,9 @@ module.exports = (winston) => {
 
       if (!!config.href) {
         config = _.extend(config, url.parse(config.href));
+        if (!config.port || (_.isString(config.port) && config.port.length == 0)) {
+          config.port = 80;
+        }
       }
 
       assert(config.verb === 'POST' || config.verb === 'PUT');
@@ -101,7 +104,7 @@ module.exports = (winston) => {
      * Get the port number used
      * @returns {number}
      */
-    get port() { return this._href.port; }
+    get port() { return (!!this._href.port ? this._href.port : 80); }
 
     get timeout() { return this._timeout; }
 

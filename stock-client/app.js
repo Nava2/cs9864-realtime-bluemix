@@ -23,7 +23,7 @@ if (app.get('env') === 'development') {
 
 w.info("Configuration: %s", util.inspect(config, { depth: null, colors: true }));
 
-app.use(logger('dev'));
+// app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -36,18 +36,16 @@ const register = require('./routes/register')(w);
 
 app.use(register);
 
-const mgr =  new EP.Manager(config.cloudant);
+const mgr =  new EP.Manager({
+  cloudantUrl: config.getServiceURL(/^Cloudant NoSQL DB.*/),
+  "refresh-rate": config.locals.database["refresh-rate"],
+  database: config.locals.database.name
+});
 app.locals.mgr = mgr;
 
 const client = new lib.StockClient({
   app: app,
-  local: {
-    href: config.local.href
-  },
-  remote: {
-    href: config.remote.href,
-    secret: config.remote.secret
-  },
+  config: config,
   handlers: {
     data: (data) => {
       const eps = mgr.endPointsFor(data.tickers);
@@ -59,19 +57,23 @@ const client = new lib.StockClient({
           eps.forEach(e => {
             const validTickers = _.intersection([e.tickers, data.tickers]);
 
-            e.ep.send({
-              path: '/',
-              data: {
-                when: data.when.format('YYYY-MM-DDThh:mm:ss'),
-                tickers: validTickers,
-                payload: _.pick(payload, validTickers)
-              },
-              next: err => {
-                if (!!err) {
-                  w.warn(`Failed to send: ${err} {${ep.toString()}}`);
+            if (validTickers.length > 0) {
+              e.ep.send({
+                path: '/',
+                data: {
+                  when: data.when.format('YYYY-MM-DDThh:mm:ss'),
+                  tickers: validTickers,
+                  payload: _.pick(payload, validTickers)
+                },
+                next: err => {
+                  if (!!err) {
+                    w.warn(`Failed to send: ${err} {${ep.toString()}}`);
+                  } else {
+                    w.debug(`sent data to ${ep.toString()}`);
+                  }
                 }
-              }
-            });
+              });
+            }
           });
         });
       }
@@ -82,11 +84,11 @@ const client = new lib.StockClient({
 });
 app.locals.stockClient = client;
 
-app.listen(process.env.VCAP_APP_PORT || config.local.href.port, () => {
+app.listen(config.port, () => {
   w.info("express started!");
 
   mgr.init(err => {
-
+    if (!!err) throw err;
   });
 
   client.connect(err => {

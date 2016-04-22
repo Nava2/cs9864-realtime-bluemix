@@ -24,6 +24,8 @@ module.exports = (store, winston) => {
   const w = (!!winston ? winston : require('winston'));
   const chance = new Chance();
 
+  w.info("Config = %s", util.inspect(config));
+
   function checkId(res, id, next) {
     if (!_.isString(id)) {
       res.status(503).json({
@@ -58,13 +60,12 @@ module.exports = (store, winston) => {
           verb: config.local.verb,
           tickers: all
         }
-      }, (err, res) => {
+      }, (err, res, body) => {
         if (!!err) {
           throw err;
         }
-        w.info(util.inspect(res));
+        w.info(util.inspect(body));
 
-        const body = res.body;
         if (!!body.success) {
           // successfully registered :3
           g_tickers = all;
@@ -74,6 +75,38 @@ module.exports = (store, winston) => {
       });
     }
   }
+  
+  router.post('/data', (req, res) => {
+    /* {
+    when: data.when.format('YYYY-MM-DDThh:mm:ss'),
+      tickers: validTickers,
+      payload: _.pick(payload, validTickers)
+  } */
+
+    res.json({success: true});
+
+    w.info("Body = %s", util.inspect(req.body));
+
+    const body = req.body;
+    let now = data.when;
+    let tickers = data.tickers;
+
+    _.forEach(g_data, data => {
+      let int = _.intersection(tickers, data.tickers);
+      if (int.length > 0) {
+        // have tickers we care about
+
+        int.forEach(t => {
+          body.payload[t].forEach(v => {
+            data.stocks.push(_.extend(_.clone(v), {
+              ticker: t,
+              when: data.when
+            }));
+          });
+        });
+      }
+    });
+  });
 
   router.post('/client', (req, res) => {
     const id = chance.guid();
@@ -182,10 +215,10 @@ module.exports = (store, winston) => {
     });
   });
 
-  /* GET home page. */
+
   router.get('/fetch', (req, res) => {
 
-    const id = req.body.id;
+    const id = req.query.id;
 
     checkId(res, id, data => {
 

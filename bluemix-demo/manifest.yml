@@ -1,0 +1,5 @@
+---
+applications:
+- name:    demo2-cs9864-2016
+  host:    demo2-cs9864-2016
+  memory:  128M

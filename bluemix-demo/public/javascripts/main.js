@@ -1,5 +1,7 @@
 'use strict';
 
+
+
 $(function () {
   // on ready
   
@@ -32,7 +34,18 @@ $(function () {
         $('#stock-list').append($elem);
       },
       
-      contentType: "application/json",
+      contentType: "application/json"
      });
   });
+
+  // setInterval(function () {
+  //
+    $.get('/api/fetch',
+      {id: ID},
+      function (data) {
+        let $tbl = $('#data-table tbody');
+
+        console.log(data);
+      });
+  // }, 1000);
 });

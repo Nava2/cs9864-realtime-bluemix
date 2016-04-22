@@ -113,11 +113,10 @@ module.exports = (winston) => {
      * Create a new client within the express app, `config.app`.
      *
      * @param {express} config.app Parent express application
-     * @param {String|URL} [config.local.href='/'] Base for all routes for subapp to be installed, slash terminated
+     * @param {cfenv~AppEnv} [config.config] Base for all routes for subapp to be installed, slash terminated
      *
-     * @param {String|URL} [config.remote.href='http://cs9864-2016.csd.uwo.ca:80/'] Address of endpoint
-     * @param {String} [config.remote.secret] {String} Secret token used for server commands, if not specified, server commands will error
-     * @param {Number} [config.timeout=15000] Milliseconds to wait between requests
+     * @param {String} [config.locals.remote.secret] {String} Secret token used for server commands, if not specified, server commands will error
+     * @param {Number} [config.locals.remote.timeout=15000] Milliseconds to wait between requests
      *
      * @param {ErrorCallback} [config.handlers.error]
      * @param {StatusCallback} [config.handlers.status]
@@ -128,18 +127,6 @@ module.exports = (winston) => {
       assert(!!config.app);
 
       config = _.defaultsDeep(config, {
-        local: {
-          href: {
-            protocol: 'http:',
-            port: 80,
-            pathname: '/client'
-          }
-        },
-        remote: {
-          href: url.parse('http://cs9864-2016.csd.uwo.ca:80/'),
-          secret: null
-        },
-        timeout: 15000,
         handlers: {
           error: (resp, err) => {
             if (!!err) {
@@ -148,29 +135,44 @@ module.exports = (winston) => {
           },
 
           status: (status, req) => {
-            console.log('[%s]: SIGNAL: %s\n',
+            w.debug('[%s]: SIGNAL: %s\n',
               req.ip, status);
           },
 
           data: (data, req) => {
             data.payload((err, payload) => {
-              console.log('[%s]: Received %d rows\n',
+              w.debug('[%s]: Received %d rows\n',
                 req.ip, payload.length);
             });
           }
         }
       });
 
-      this._remote = (_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
-      this._local = (_.isString(config.local.href) ? url.parse(config.local.href) : config.local.href);
+      this._config = config.config;
 
-      this._secret = config.remote.secret;
+      this._servUrl = url.parse(this._config.getServiceURL("stock-server").slice(0, -1));
+      this._pathname = _.get(config.config, "locals.local.client.pathname");
+
+      if (!this._config.isLocal) {
+        this._local = url.parse(this._config.url);
+      } else {
+        this._local = {
+          protocol: "http:",
+          port: this._config.port
+        };
+      }
+
+      this._local = _.extend(this._local, {
+        pathname: this._pathname
+      });
+
+      this._secret = this._config.locals.remote.secret;
 
       /**
        * How long to wait before timing out with requests (milliseconds)
        * @type {number}
        */
-      this.timeout = config.timeout;
+      this.timeout = this._config.locals.remote.timeout;
 
       /**
        * Handlers information
@@ -205,15 +207,15 @@ module.exports = (winston) => {
         handlers.status(req.body.signal, req);
       });
 
-      config.app.use(this._local.pathname, app);
+      config.app.use(this._pathname, app);
     }
 
     get app() { return this._app; }
 
-    get endpoint() { return url.format(this._remote); }
+    get endpoint() { return this._servUrl; }
 
     _remoteUrl(path, query) {
-      return url.format(_.merge(_.clone(this._remote), {
+      return url.format(_.extend(this._servUrl, {
         pathname: path,
         query: query
       }));
@@ -236,7 +238,7 @@ module.exports = (winston) => {
       request.put(req, (err, resp, body) => {
         if (!err) {
           if (resp.statusCode != 200) {
-            err = new Error("Bad status code: " + resp.statusCode + '\nError: ' + util.inspect(body));
+            err = new Error(`Bad status code: ${resp.statusCode}\nError: ${req.uri}, ${util.inspect(resp.body)}`);
           }
         }
 

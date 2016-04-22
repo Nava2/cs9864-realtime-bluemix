@@ -12,6 +12,8 @@ const formatter = require('formatter');
 
 const Cloudant = require('cloudant');
 
+const safe = require('./safe-callback');
+
 module.exports = (winston) => {
 
   const w = (!!winston ? winston : require('winston'));
@@ -31,7 +33,7 @@ module.exports = (winston) => {
     /**
      * Create a new `Manager` that manages endpoints against a cloudant-based storage.
      *
-     * @param {String|URL} config.url Cloudant database URL
+     * @param {String|URL} config.cloudantUrl Cloudant database URL
      *
      * @param {Number} [config.refresh-rate=120000] Milliseconds between updating cloudant storage
      * @param {String} [config.database] Name of the database on Cloudant
@@ -42,39 +44,19 @@ module.exports = (winston) => {
         "refresh-rate": 120000 // 2 minutes
       });
 
-      if (!_.isString(config.url)) {
-        if (!!config.url.protocol) {
-          config.url = url.format(config.url);
-        } else {
-          throw new TypeError('config.url must be a string or URL object');
-        }
-      }
-
       // Initialize the library with my account.
 
       this._refreshRate = config['refresh-rate'];
-      this._url = config.url;
+      this._url = config.cloudantUrl;
       this._dbName = config.database;
-    }
 
-    static _safeNext(next) {
-      if (_.isFunction(next) && next.name === '__Manager__safeNext') {
-        return next;
+      if (this._url.slice(-1) == '/') {
+        this._url = this._url.slice(0, -1);
       }
-
-      function __Manager__safeNext(err) {
-        if (_.isFunction(next)) {
-          next(err);
-        } else if (!!err) {
-          throw err;
-        }
-      }
-
-      return __Manager__safeNext;
     }
 
     _fetchEndpoints(next) {
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       // fetch the endpoints from the server
       this._db.find({
@@ -145,17 +127,14 @@ module.exports = (winston) => {
         }
       }, (err, res) => {
         // w.debug('res = %s', util.inspect(res.indexes));
-
-        if (res.docs.length < 1) {
+        if (!err && res.docs.length < 1) {
           // not found :<
 
           db.insert(indexDoc, (err, res) => {
             w.debug('Index created? %s', !err ? res.ok : false);
             next(err);
           });
-
         } else {
-
           next(err);
         }
       });
@@ -165,7 +144,7 @@ module.exports = (winston) => {
     _initDb(cloudant, next) {
       assert(!this._db);
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
       cloudant.db.create(this._dbName, err => {
         if (!err) {
           this._db = cloudant.db.use(this._dbName);
@@ -184,7 +163,7 @@ module.exports = (winston) => {
 
       const cloudant = Cloudant({url: this._url});
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
       const dbExists = () => {
 
         // when the db exists, run a verify
@@ -227,7 +206,7 @@ module.exports = (winston) => {
     }
 
     stop(next) {
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       if (!this._fetchInterval) {
         snext(new Error('Can not stop unstarted Manager.'));
@@ -241,27 +220,29 @@ module.exports = (winston) => {
     /**
      * Get all of the EndPoint instances that subscribe to the `tickers`.
      * @param {String[]} tickers Tickers requested.
-     * @returns {EndPoint[]} Array of endpoint instances
+     * @returns {{ep: EndPoint, tickers: String[]}[]} Array of endpoint instances
      */
     endPointsFor(tickers) {
-      let epIds = new Set();
+      let eps = [];
       const tmap = this._tickerMap;
       tickers.forEach(ticker => {
         if (_.has(tmap, ticker)) {
           tmap[ticker].forEach(id => {
-            epIds.add(id);
+            eps.push(id);
           });
         } else {
           // w.debug('Ticker %s is not currently subscribed to.', ticker);
         }
       });
 
+      eps = _.uniq(eps);
+
+      if (eps.length > 0) {
+        w.debug("EPManager::endPointsFor: Found tickers relevant to: ", eps);
+      }
+
       // now we have all the epIds we need:
-      let eps = [];
-      epIds.forEach(id => {
-        eps.push(this._epMap[id]);
-      });
-      return eps;
+      return eps.map(id => (this._epMap[id]));
     }
 
     /**
@@ -272,7 +253,7 @@ module.exports = (winston) => {
     addEndPoint(ep, next) {
       assert(!!ep);
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       if (!this._db) {
         snext(new Error("Can not add an endpoint, must call Manager#init() first."));
@@ -280,7 +261,8 @@ module.exports = (winston) => {
       }
 
       const tickers = ep.tickers.map(_.lowerCase);
-      const Q = F.EXACT_EP(ep.endpoint.json);
+      const Q = F.EXACT_EP(ep.endpoint.toJson());
+      w.info('EndPointManager: Register Query: %s', Q);
 
       const db = this._db;
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
@@ -294,6 +276,7 @@ module.exports = (winston) => {
                     && _.has(res, 'endpoint')
                     && !_.isEqual(res.tickers, tickers)) {
                   // need to update:
+                  w.info('EndPointManager: ')
                   db.insert(_.extend(res, {
                     tickers: tickers
                   }), snext);
@@ -312,7 +295,7 @@ module.exports = (winston) => {
 
             db.insert({
               tickers: ep.tickers,
-              endpoint: ep.endpoint.json
+              endpoint: ep.endpoint.toJson()
             }, snext);
           }
         } else {
@@ -330,14 +313,14 @@ module.exports = (winston) => {
     removeEndpoint(ep, next) {
       assert(!!ep);
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       if (!this._db) {
         snext(new Error("Can not remove an endpoint, must call Manager#init() first."));
         return;
       }
 
-      const Q = F.EXACT_EP(ep.json);
+      const Q = F.EXACT_EP(ep.toJson());
 
       const db = this._db;
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {

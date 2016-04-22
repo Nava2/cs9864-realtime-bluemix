@@ -16,7 +16,7 @@ module.exports = (winston) => {
 
   router.put('/register', function(req, res) {
     const ep = new EndPoint({
-      href: (!_.isString(req.body.href) ? url.format(_.extend(req.body.href, { hostname: req.ip })) : req.body.href),
+      href: (!_.isString(req.body.href) ? url.format(req.body.href) : req.body.href),
       verb: req.body.verb
     });
 
@@ -27,7 +27,7 @@ module.exports = (winston) => {
       if (!!err) {
         res.status(403).json({
           success: false,
-          error: err.error
+          error: err
         });
       } else {
         w.debug(`app.js: Registered ${ep.toString()}`);
@@ -49,7 +49,7 @@ module.exports = (winston) => {
       if (!!err) {
         res.status(403).json({
           success: false,
-          error: err.error
+          error: err
         });
       } else {
         w.debug(`app.js: Unregistered ${ep.toString()}`);
