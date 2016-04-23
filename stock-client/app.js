@@ -23,11 +23,12 @@ if (app.get('env') === 'development') {
 
 w.info("Configuration: %s", util.inspect(config, { depth: null, colors: true }));
 
-// app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(logger('dev'));
+app.use(logger('combined', {
+  skip: function (req, res) { return res.statusCode < 400 }
+}));
 
 const EP = require('./lib/endpoint-manager')(w);
 const lib = require('./lib/stock-client')(w);
@@ -51,6 +52,7 @@ const client = new lib.StockClient({
       const eps = mgr.endPointsFor(data.tickers);
 
       if (eps.length > 0) {
+        w.silly("Sending data to %d endpoints!", eps.length);
         // only decode if necessary
         data.payload((err, payload) => {
 
@@ -58,12 +60,16 @@ const client = new lib.StockClient({
             const validTickers = _.intersection(e.tickers, data.tickers);
 
             if (validTickers.length > 0) {
+              const payloadToSend = _.pick(payload, validTickers);
+              const rowCount = _.reduce(_.map(payloadToSend, v => (v.length)), (s, v) => (s + v));
+              w.silly("Sending %d rows from %d tickers to %s", rowCount, _.keys(payloadToSend).length, e.ep.toString());
+              
               e.ep.send({
                 path: '',
                 data: {
                   when: data.when.format('YYYY-MM-DDThh:mm:ss'),
                   tickers: validTickers,
-                  payload: _.pick(payload, validTickers)
+                  payload: payloadToSend
                 },
                 next: err => {
                   if (!!err) {

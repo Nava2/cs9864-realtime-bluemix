@@ -17,6 +17,13 @@ const request = require('request');
 
 const config = require('./config');
 
+const remoteHref = config.isLocal ? {
+  protocol: "http:",
+  hostname: config.locals.client.hostname,
+  port: config.port,
+  pathname: config.locals.client.pathname
+} : config.url + config.locals.client.pathname;
+
 var index = require('./routes/index')(w);
 var api = require('./routes/api')(w);
 
@@ -28,7 +35,9 @@ app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(logger('dev'));
+app.use(logger('combined', {
+  skip: function (req, res) { return res.statusCode < 400 }
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -71,15 +80,14 @@ app.use(function(err, req, res, next) {
 
 app.listen(config.port, () => {
   w.info("express started!");
+  const uri = config.getServiceURL("stock-client") + 'register';
+
+  w.info("Registering with %s", uri);
 
   request.put({
-    url: config.getServiceURL("stock-client") + 'register',
+    url: uri,
     json: {
-      href: {
-        protocol: "http:",
-        port: config.port,
-        pathname: config.locals.client.pathname
-      },
+      href: remoteHref,
       verb: config.locals.client.verb,
       tickers: []
     }

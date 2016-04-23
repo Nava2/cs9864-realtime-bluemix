@@ -13,6 +13,12 @@ const request = require('request');
 
 const config = require('../config');
 
+const remoteHref = config.isLocal ? {
+  protocol: "http:",
+  hostname: config.locals.client.hostname,
+  port: config.port,
+  pathname: config.locals.client.pathname
+} : config.url + config.locals.client.pathname;
 // const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
 
 
@@ -56,11 +62,7 @@ module.exports = (store, winston) => {
       request.put({
         url: config.getServiceURL("stock-client") + 'register',
         json: {
-          href: {
-            protocol: "http:",
-            port: config.port,
-            pathname: config.locals.client.pathname
-          },
+          href: remoteHref,
           verb: config.locals.client.verb,
           tickers: all
         }
@@ -88,7 +90,6 @@ module.exports = (store, winston) => {
   } */
 
     res.json({success: true});
-    //w.info("Body = %s", util.inspect(req.body));
 
     const body = req.body;
     const tickers = body.tickers.map(_.lowerCase);

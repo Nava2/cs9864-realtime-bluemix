@@ -33,7 +33,8 @@ module.exports = (winston) => {
         w.debug(`app.js: Registered ${ep.toString()}`);
 
         res.json({
-          success: true
+          success: true,
+          endPoint: ep.toJson()
         });
       }
     });

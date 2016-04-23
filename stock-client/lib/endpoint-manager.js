@@ -41,7 +41,7 @@ module.exports = (winston) => {
     constructor(config) {
 
       config = _.defaults(config, {
-        "refresh-rate": 120000 // 2 minutes
+        "refresh-rate": 30000 // 2 minutes
       });
 
       // Initialize the library with my account.
@@ -265,38 +265,59 @@ module.exports = (winston) => {
       w.info('EndPointManager: Register Query: %s', Q);
 
       const db = this._db;
+
+      function update(res) {
+        w.debug('EndPointManager#addEndPoint: Update', ep.endpoint.toString());
+        w.debug('get.res =', util.inspect(res));
+        db.insert(_.extend(res, {
+          tickers: _.uniq(_.flatten(tickers, res.tickers)).sort()
+        }), snext);
+      }
+
+      function create() {
+        w.debug('EndPointManager#addEndPoint: Create', ep.endpoint.toString());
+        db.insert({
+          tickers: ep.tickers,
+          endpoint: ep.endpoint.toJson()
+        }, snext);
+      }
+
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
         if (!err) {
           if (res.rows.length > 0) {
+            w.debug('search.res =', util.inspect(res));
             // it already exists
             // don't add it, but do check if updates are needed
             db.get(res.rows[0].id, (err, res) => {
               if (!err) {
-                if (_.has(res, 'tickers')
-                    && _.has(res, 'endpoint')
-                    && !_.isEqual(res.tickers, tickers)) {
-                  // need to update:
-                  w.info('EndPointManager: ');
-                  db.insert(_.extend(res, {
-                    tickers: _.uniq(_.flatten(tickers, res.tickers)).sort()
-                  }), snext);
+                w.debug("get.res =", util.inspect(res, {deep: true}));
 
+                if (_.isEqual(res.endpoint, ep.endpoint.toJson())) {
+                  if (!_.isEqual(res.tickers, tickers)) {
+                    // need to update because the tickers are different
+
+                    w.silly("EndPointManager#addEndPoint: Updating, tickers do not match.");
+                    update(res);
+                  } else {
+                    // no need to update, the tickers are identical
+                    w.silly("EndPointManager#addEndPoint: Not updating, the tickers are identical");
+                    snext(err);
+                  }
                 } else {
-                  // no need to update, just pass it on
-                  snext(err);
+                  // need to create new endpoint
+                  w.silly("EndPointManager#addEndPoint: Create: found endpoint is not correct.");
+                  create();
                 }
               } else {
-                // error happened when trying to get the row
+                // error happened from db.get()
+                w.silly("EndPointManager#addEndPoint: Error occured:", err.toString());
                 snext(err);
               }
             });
           } else {
             // else it doesn't exist, so add it!
-
-            db.insert({
-              tickers: ep.tickers,
-              endpoint: ep.endpoint.toJson()
-            }, snext);
+            w.silly("EndPointManager#addEndPoint: Creating new instance because no row was found by query:", Q);
+            create();
           }
         } else {
           // !err - db.search()
@@ -321,30 +342,38 @@ module.exports = (winston) => {
       }
 
       const Q = F.EXACT_EP(ep.toJson());
+      w.silly('EndPointManager#removeEndpoint: Query: %s', Q);
 
       const db = this._db;
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
         if (!err) {
+          w.debug('EPManager#removeEndpoint: search.res =', util.inspect(res));
           if (res.rows.length > 0) {
-            // it exists, so get the revision
-            let id = res.rows[0].id;
-            db.get(id, (err, res) => {
-              assert(id === res._id);
-
-              // now actually destroy it
+            // it already exists
+            // don't add it, but do check if updates are needed
+            db.get(res.rows[0].id, (err, res) => {
               if (!err) {
-                db.destroy(id, res._rev, snext);
+                w.debug("EPManager#removeEndpoint: get.res =", util.inspect(res, {deep: true}));
+
+                if (_.isEqual(res.endpoint, ep.toJson())) {
+                  // now actually destroy it
+                  w.debug("EPManager#removeEndpoint: Removing (%s, %s)", res._id, res._rev);
+
+                  db.destroy(res._id, res._rev, snext);
+                }
               } else {
-                snext(err);
+
               }
             });
           } else {
-            // else it doesn't exist, so we can ignore it..
+            // else no rows exist
+            w.silly("EPManager#removeEndpoint: Could not find result from search (likely already deleted).");
 
             snext(err);
           }
         } else {
           // !err - db.search()
+          w.silly("EPManager#removeEndpoint: Error in search.");
           snext(err);
         }
       });
