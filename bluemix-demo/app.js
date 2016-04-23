@@ -6,6 +6,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+const compression = require('compression');
 
 const url = require('url');
 const util = require('util');
@@ -15,8 +16,6 @@ const w = require('winston');
 const request = require('request');
 
 const config = require('./config');
-
-const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
 
 var index = require('./routes/index')(w);
 var api = require('./routes/api')(w);
@@ -34,6 +33,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(compression());
 
 app.use('/', index);
 app.use('/api', api);
@@ -69,14 +69,18 @@ app.use(function(err, req, res, next) {
   });
 });
 
-app.listen(process.env.VCAP_APP_PORT || config.local.href.port, () => {
+app.listen(config.port, () => {
   w.info("express started!");
 
   request.put({
-    url: remoteUrl + 'register',
+    url: config.getServiceURL("stock-client") + 'register',
     json: {
-      href: config.local.href,
-      verb: config.local.verb,
+      href: {
+        protocol: "http:",
+        port: config.port,
+        pathname: config.locals.client.pathname
+      },
+      verb: config.locals.client.verb,
       tickers: []
     }
   }, (err, res) => {

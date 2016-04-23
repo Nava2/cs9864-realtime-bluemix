@@ -13,12 +13,12 @@ const request = require('request');
 
 const config = require('../config');
 
-const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
+// const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
 
 
 module.exports = (store, winston) => {
 
-  let g_tickers = new Set([]);
+  let g_tickers = [];
   let g_data = {};
 
   const w = (!!winston ? winston : require('winston'));
@@ -49,15 +49,19 @@ module.exports = (store, winston) => {
   }
   
   function updateGTickers() {
-    let all = _.union(_.map(g_data, data => (data.tickers)));
+    let all = _.chain(g_data).map(data => (data.tickers)).flatten().uniq().value();
     
-    if (all !== g_tickers) {
+    if (!_.isEqual(all, g_tickers)) {
       // update registry
       request.put({
-        url: remoteUrl + 'register',
+        url: config.getServiceURL("stock-client") + 'register',
         json: {
-          href: config.local.href,
-          verb: config.local.verb,
+          href: {
+            protocol: "http:",
+            port: config.port,
+            pathname: config.locals.client.pathname
+          },
+          verb: config.locals.client.verb,
           tickers: all
         }
       }, (err, res, body) => {
@@ -84,15 +88,19 @@ module.exports = (store, winston) => {
   } */
 
     res.json({success: true});
-
-    w.info("Body = %s", util.inspect(req.body));
+    //w.info("Body = %s", util.inspect(req.body));
 
     const body = req.body;
-    let now = data.when;
-    let tickers = data.tickers;
+    const tickers = body.tickers.map(_.lowerCase);
+    const when = moment(body.when, "YYYY-MM-DDThh:mm:ss");
+    let now = {
+      date: when.format("YYYY-MM-DD"),
+      time: when.format("hh:mm:ss")
+    };
 
-    _.forEach(g_data, data => {
-      let int = _.intersection(tickers, data.tickers);
+    _.each(g_data, data => {
+      // intersect the body tickers with the "data" tickers
+      let int = _.intersection(tickers, data.tickers.map(_.lowerCase));
       if (int.length > 0) {
         // have tickers we care about
 
@@ -100,7 +108,7 @@ module.exports = (store, winston) => {
           body.payload[t].forEach(v => {
             data.stocks.push(_.extend(_.clone(v), {
               ticker: t,
-              when: data.when
+              when: now
             }));
           });
         });
@@ -146,8 +154,6 @@ module.exports = (store, winston) => {
         success: true,
         tickers: data.tickers
       });
-
-      g_tickers = Set(_.union(_.map(g_data, data => (data.tickers))));
     });
   });
 
@@ -187,6 +193,8 @@ module.exports = (store, winston) => {
         success: true,
         tickers: data.tickers
       });
+
+      updateGTickers();
     });
   });
 
@@ -210,7 +218,7 @@ module.exports = (store, winston) => {
       });
 
       if (ch) {
-        g_tickers = Set(_.union(_.map(g_data, data => (data.tickers))));
+        updateGTickers();
       }
     });
   });
@@ -227,6 +235,10 @@ module.exports = (store, winston) => {
         stocks: data.stocks
       });
 
+      if (data.stocks.length > 0) {
+        w.silly("Data was stored!");
+      }
+
       data.stocks = [];
       data.last = moment();
     });
@@ -236,7 +248,7 @@ module.exports = (store, winston) => {
   // cleanup!
   setInterval(() => {
     const now = moment();
-    _.map(g_data, (data, id) => {
+    _.each(g_data, (data, id) => {
       if (data.last.diff(now) > 45 * 1000) { // clean 60s
         delete g_data[id];
       }

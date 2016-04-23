@@ -16,7 +16,7 @@ module.exports = (winston) => {
 
   router.put('/register', function(req, res) {
     const ep = new EndPoint({
-      href: (!_.isString(req.body.href) ? url.format(req.body.href) : req.body.href),
+      href: (!_.isString(req.body.href) ? _.defaults(req.body.href, { hostname: req.ip }) : url.parse(req.body.href)),
       verb: req.body.verb
     });
 

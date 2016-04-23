@@ -3,3 +3,4 @@ applications:
 - name:    stock-data-handler-cs9864-2016
   host:    stock-data-handler-cs9864-2016
   memory:  256M
+  instances: 3

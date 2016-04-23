@@ -225,7 +225,7 @@ module.exports = (winston) => {
     endPointsFor(tickers) {
       let eps = [];
       const tmap = this._tickerMap;
-      tickers.forEach(ticker => {
+      tickers.map(_.lowerCase).forEach(ticker => {
         if (_.has(tmap, ticker)) {
           tmap[ticker].forEach(id => {
             eps.push(id);
@@ -276,9 +276,9 @@ module.exports = (winston) => {
                     && _.has(res, 'endpoint')
                     && !_.isEqual(res.tickers, tickers)) {
                   // need to update:
-                  w.info('EndPointManager: ')
+                  w.info('EndPointManager: ');
                   db.insert(_.extend(res, {
-                    tickers: tickers
+                    tickers: _.uniq(_.flatten(tickers, res.tickers)).sort()
                   }), snext);
 
                 } else {

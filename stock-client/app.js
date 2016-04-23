@@ -55,11 +55,11 @@ const client = new lib.StockClient({
         data.payload((err, payload) => {
 
           eps.forEach(e => {
-            const validTickers = _.intersection([e.tickers, data.tickers]);
+            const validTickers = _.intersection(e.tickers, data.tickers);
 
             if (validTickers.length > 0) {
               e.ep.send({
-                path: '/',
+                path: '',
                 data: {
                   when: data.when.format('YYYY-MM-DDThh:mm:ss'),
                   tickers: validTickers,
@@ -67,9 +67,11 @@ const client = new lib.StockClient({
                 },
                 next: err => {
                   if (!!err) {
-                    w.warn(`Failed to send: ${err} {${ep.toString()}}`);
+                    mgr.removeEndpoint(e.ep, () => {
+                      w.warn(`Removing: Failed to send: ${err} {${e.ep.toString()}}`);
+                    });
                   } else {
-                    w.debug(`sent data to ${ep.toString()}`);
+                    w.debug(`sent data to ${e.ep.toString()}`);
                   }
                 }
               });
