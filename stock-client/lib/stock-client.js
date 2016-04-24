@@ -33,7 +33,7 @@ module.exports = (winston) => {
     constructor(json) {
 
       this._when = moment(json.when);
-      this._tickers = json.tickers;
+      this._tickers = json.tickers.map(_.upperCase);
 
       this._payload = {
         buff: new Buffer(json.payload, 'base64'),

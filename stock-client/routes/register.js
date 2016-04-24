@@ -21,7 +21,7 @@ module.exports = (winston) => {
     });
 
     req.app.locals.mgr.addEndPoint({
-      tickers: req.body.tickers,
+      tickers: req.body.tickers.map(_.upperCase),
       endpoint: ep
     }, err => {
       if (!!err) {

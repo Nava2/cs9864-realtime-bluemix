@@ -149,7 +149,7 @@ module.exports = (winston) => {
 
       const sql_ttable = `trans_${date}`;
 
-      const sql_ticker_counts = 'SELECT ticker' +
+      const sql_ticker_counts = 'SELECT UPPER(ticker) as ticker' +
         ', ticker_id' +
         ', COUNT(*) AS cnt ' +
         `FROM ${sql_ttable}, tickers ` +
@@ -220,7 +220,7 @@ module.exports = (winston) => {
 
           // Get all of the ticker data, we ignore the `time` field because it's already known from the package
           const sql_get_data = `SELECT ${sql_ttable}.id` +
-            ', ticker' +
+            ', UPPER(ticker) as ticker' +
             ', price' +
             ', size' +
             ', exchange_id' +

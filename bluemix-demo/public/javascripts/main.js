@@ -9,6 +9,7 @@ $(function () {
     let row_idx = 1;
     return function create_row(d) {
       let row = $('<tr>');
+      row.append($('<td>').text("" + (row_idx++)));
       row.append($('<td>').text("" + d.id));
       row.append($('<td>').text(d.ticker));
       row.append($('<td>').text(d.when.date));

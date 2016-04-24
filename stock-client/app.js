@@ -60,7 +60,7 @@ const client = new lib.StockClient({
             const validTickers = _.intersection(e.tickers, data.tickers);
 
             if (validTickers.length > 0) {
-              const payloadToSend = _.pick(payload, validTickers);
+              const payloadToSend = _.pick(payload, validTickers.map(_.upperCase));
               const rowCount = _.reduce(_.map(payloadToSend, v => (v.length)), (s, v) => (s + v));
               w.silly("Sending %d rows from %d tickers to %s", rowCount, _.keys(payloadToSend).length, e.ep.toString());
               

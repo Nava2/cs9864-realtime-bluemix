@@ -41,7 +41,7 @@ module.exports = (winston) => {
     constructor(config) {
 
       config = _.defaults(config, {
-        "refresh-rate": 30000 // 2 minutes
+        "refresh-rate": 30000 // 30 seconds
       });
 
       // Initialize the library with my account.
@@ -68,6 +68,8 @@ module.exports = (winston) => {
         if (!err) {
           let docs = result.docs;
 
+          w.silly("EPManager#_fetchEndpoints: result =", util.inspect(result, {color: true, deep: true}));
+
           // build up two maps: 1) ticker => id, 2) id => endpoint
           let tmap = {}, imap = {};
           _.filter(docs, d => (_.has(d, 'endpoint'))).forEach(doc => {
@@ -87,6 +89,8 @@ module.exports = (winston) => {
 
           this._tickerMap = tmap;
           this._epMap = imap;
+
+          w.silly("EPManager#_fetchEndpoints: this._tickerMap =", util.inspect(this._tickerMap, {color: true, deep: true}));
         }
 
         snext(err);
@@ -225,7 +229,7 @@ module.exports = (winston) => {
     endPointsFor(tickers) {
       let eps = [];
       const tmap = this._tickerMap;
-      tickers.map(_.lowerCase).forEach(ticker => {
+      tickers.map(_.upperCase).forEach(ticker => {
         if (_.has(tmap, ticker)) {
           tmap[ticker].forEach(id => {
             eps.push(id);
@@ -253,29 +257,33 @@ module.exports = (winston) => {
     addEndPoint(ep, next) {
       assert(!!ep);
 
-      const snext = safe(next);
+      const snext = (err) => {
+        this._fetchEndpoints(() => {
+          safe(next)(err);
+        });
+      };
 
       if (!this._db) {
         snext(new Error("Can not add an endpoint, must call Manager#init() first."));
         return;
       }
 
-      const tickers = ep.tickers.map(_.lowerCase);
+      const tickers = ep.tickers.map(_.upperCase);
       const Q = F.EXACT_EP(ep.endpoint.toJson());
       w.info('EndPointManager: Register Query: %s', Q);
 
       const db = this._db;
 
       function update(res) {
-        w.debug('EndPointManager#addEndPoint: Update', ep.endpoint.toString());
-        w.debug('get.res =', util.inspect(res));
+        w.debug('EPManager#addEndPoint: Update', ep.endpoint.toString());
+        w.debug('EPManager#addEndPoint: get.res =', util.inspect(res));
         db.insert(_.extend(res, {
           tickers: _.uniq(_.flatten(tickers, res.tickers)).sort()
         }), snext);
       }
 
       function create() {
-        w.debug('EndPointManager#addEndPoint: Create', ep.endpoint.toString());
+        w.debug('EPManager#addEndPoint: Create', ep.endpoint.toString());
         db.insert({
           tickers: ep.tickers,
           endpoint: ep.endpoint.toJson()
@@ -290,27 +298,27 @@ module.exports = (winston) => {
             // don't add it, but do check if updates are needed
             db.get(res.rows[0].id, (err, res) => {
               if (!err) {
-                w.debug("get.res =", util.inspect(res, {deep: true}));
+                w.debug("EPManager#addEndPoint: get.res =", util.inspect(res, {deep: true}));
 
                 if (_.isEqual(res.endpoint, ep.endpoint.toJson())) {
                   if (!_.isEqual(res.tickers, tickers)) {
                     // need to update because the tickers are different
 
-                    w.silly("EndPointManager#addEndPoint: Updating, tickers do not match.");
+                    w.silly("EPManager#addEndPoint: Updating, tickers do not match.");
                     update(res);
                   } else {
                     // no need to update, the tickers are identical
-                    w.silly("EndPointManager#addEndPoint: Not updating, the tickers are identical");
+                    w.silly("EPManager#addEndPoint: Not updating, the tickers are identical");
                     snext(err);
                   }
                 } else {
                   // need to create new endpoint
-                  w.silly("EndPointManager#addEndPoint: Create: found endpoint is not correct.");
+                  w.silly("EPManager#addEndPoint: Create: found endpoint is not correct.");
                   create();
                 }
               } else {
                 // error happened from db.get()
-                w.silly("EndPointManager#addEndPoint: Error occured:", err.toString());
+                w.silly("EPManager#addEndPoint: Error occurred:", err.toString());
                 snext(err);
               }
             });
@@ -329,7 +337,7 @@ module.exports = (winston) => {
     /**
      * Removes's an endpoint from the manager and if necessary, removes it from the database
      * @param {EndPoint} ep
-     * @param [next]
+     * @param {function(Error, boolean)} [next]
      */
     removeEndpoint(ep, next) {
       assert(!!ep);
@@ -342,7 +350,7 @@ module.exports = (winston) => {
       }
 
       const Q = F.EXACT_EP(ep.toJson());
-      w.silly('EndPointManager#removeEndpoint: Query: %s', Q);
+      w.silly('EndPointManager#removeEndpoint: Query: %s, EndPoint: %s', Q, ep.toString());
 
       const db = this._db;
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
@@ -359,22 +367,27 @@ module.exports = (winston) => {
                   // now actually destroy it
                   w.debug("EPManager#removeEndpoint: Removing (%s, %s)", res._id, res._rev);
 
-                  db.destroy(res._id, res._rev, snext);
+                  db.destroy(res._id, res._rev, err => {
+                    snext(err, !err);
+                  });
+
                 }
               } else {
+                w.silly("EPManager#removeEndpoint: Error from db.get %s", error.toString());
 
+                snext(err, false);
               }
             });
           } else {
             // else no rows exist
             w.silly("EPManager#removeEndpoint: Could not find result from search (likely already deleted).");
 
-            snext(err);
+            snext(err, false);
           }
         } else {
           // !err - db.search()
           w.silly("EPManager#removeEndpoint: Error in search.");
-          snext(err);
+          snext(err, false);
         }
       });
     }

@@ -22,7 +22,7 @@ const remoteHref = config.isLocal ? {
   hostname: config.locals.client.hostname,
   port: config.port,
   pathname: config.locals.client.pathname
-} : config.url + config.locals.client.pathname;
+} : _.extend(url.parse(config.url), { protocol: "http:", pathname: config.locals.client.pathname });
 
 var index = require('./routes/index')(w);
 var api = require('./routes/api')(w);

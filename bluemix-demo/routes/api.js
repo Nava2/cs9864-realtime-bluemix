@@ -18,7 +18,7 @@ const remoteHref = config.isLocal ? {
   hostname: config.locals.client.hostname,
   port: config.port,
   pathname: config.locals.client.pathname
-} : config.url + config.locals.client.pathname;
+} : _.extend(url.parse(config.url), { protocol: "http:", pathname: config.locals.client.pathname });
 // const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
 
 
@@ -89,10 +89,8 @@ module.exports = (store, winston) => {
       payload: _.pick(payload, validTickers)
   } */
 
-    res.json({success: true});
-
     const body = req.body;
-    const tickers = body.tickers.map(_.lowerCase);
+    const tickers = body.tickers.map(_.upperCase);
     const when = moment(body.when, "YYYY-MM-DDThh:mm:ss");
     let now = {
       date: when.format("YYYY-MM-DD"),
@@ -101,11 +99,11 @@ module.exports = (store, winston) => {
 
     _.each(g_data, data => {
       // intersect the body tickers with the "data" tickers
-      let int = _.intersection(tickers, data.tickers.map(_.lowerCase));
-      if (int.length > 0) {
+      let good_tickers = _.intersection(tickers, data.tickers.map(_.upperCase));
+      if (good_tickers.length > 0) {
         // have tickers we care about
 
-        int.forEach(t => {
+        good_tickers.forEach(t => {
           body.payload[t].forEach(v => {
             data.stocks.push(_.extend(_.clone(v), {
               ticker: t,
@@ -115,6 +113,8 @@ module.exports = (store, winston) => {
         });
       }
     });
+
+    res.json({success: true});
   });
 
   router.post('/client', (req, res) => {
