@@ -250,11 +250,13 @@ module.exports = (store, winston) => {
   setInterval(() => {
     const now = moment();
     _.each(g_data, (data, id) => {
-      if (data.last.diff(now) > 45 * 1000) { // clean 60s
+      if (data.last.diff(now) > 60 * 1000) { // clean 60s
         delete g_data[id];
       }
 
     });
+
+    updateGTickers();
   }, 30 * 1000);
 
   return router;
