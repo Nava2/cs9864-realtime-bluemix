@@ -16,24 +16,25 @@ module.exports = (winston) => {
 
   router.put('/register', function(req, res) {
     const ep = new EndPoint({
-      href: (!_.isString(req.body.href) ? url.format(_.extend(req.body.href, { hostname: req.ip })) : req.body.href),
+      href: (!_.isString(req.body.href) ? _.defaults(req.body.href, { hostname: req.ip }) : url.parse(req.body.href)),
       verb: req.body.verb
     });
 
-    this.locals.mgr.addEndPoint({
-      tickers: req.body.tickers,
+    req.app.locals.mgr.addEndPoint({
+      tickers: req.body.tickers.map(_.upperCase),
       endpoint: ep
     }, err => {
       if (!!err) {
         res.status(403).json({
           success: false,
-          error: err.error
+          error: err
         });
       } else {
         w.debug(`app.js: Registered ${ep.toString()}`);
 
         res.json({
-          success: true
+          success: true,
+          endPoint: ep.toJson()
         });
       }
     });
@@ -45,11 +46,11 @@ module.exports = (winston) => {
       verb: req.body.verb
     });
 
-    this.locals.mgr.removeEndpoint(ep, err => {
+    req.app.locals.mgr.removeEndpoint(ep, err => {
       if (!!err) {
         res.status(403).json({
           success: false,
-          error: err.error
+          error: err
         });
       } else {
         w.debug(`app.js: Unregistered ${ep.toString()}`);

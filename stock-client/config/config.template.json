@@ -1,19 +1,51 @@
 {
-  "local": {
-    "href": {
-      "port": 9495,
-      "pathname": "/client"
+  "vcap": {
+
+    "services": {
+      "cloudant-service-name": [
+        {
+          "name": "Cloudant NoSQL DB-i3",
+          "label": "cloudantNoSQLDB",
+          "plan": "Shared",
+          "credentials": {
+            "username": "cloudant-username",
+            "password": "cloudant-password",
+            "host": "host-name.cloudant.com",
+            "port": 443,
+            "url": "https://${username}:${password}@${host}"
+          }
+        }
+      ],
+
+      "stock-server": [
+        {
+          "name": "stock-server",
+          "label": "stock-server",
+          "credentials": {
+            "host": "host",
+            "port": 80,
+            "url": "http://${host}"
+          }
+        }
+      ]
     }
   },
-  "remote": {
-    "href": "http://my-stock-server.example.com/",
-    "secret": "secret-passphrase",
-    "timeout": 15000
-  },
 
-  "cloudant": {
-    "url": "http://my-cloudant-store.bluemix.net/",
-    "database": "database-name",
-    "refresh-rate": 30000
+
+  "locals": {
+    "database": {
+      "name": "cloudant-database-name",
+      "refresh-rate": 30000
+    },
+    "remote": {
+      "timeout": 15000,
+      "secret": "secret-for-stock-server"
+    },
+    "local": {
+      "client": {
+        "pathname": "/client"
+      }
+    }
   }
 }
+

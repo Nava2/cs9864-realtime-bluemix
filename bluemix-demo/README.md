@@ -6,17 +6,12 @@ This application will not run later since the cloudant service will be dead by t
 
 ## Running
 
-1. Download the cloudant identity information from bluemix
-2. Copy `cloudant.template.json` as `cloudant.json`
-3. Edit `cloudant.json` with the identity information from Bluemix
+3. Edit `config.bluemix.json` with the identity information from Bluemix
 4. Run `node ./app.js`
 
 ## Bluemix
 
 1. `bluemix login`
-2. `cf push cs9864-bluemix-demo -m 256M`
-3. Open browser to [application](http://cs9864-bluemix-demo.mybluemix.net/?ticker=aapl)
+2. `cf push cs9864-bluemix-demo`
+3. Open browser to [application](http://cs9864-bluemix-demo.mybluemix.net/)
 
-## Warning
-
-**NEVER COMMIT `cloudant.json` to the repository**

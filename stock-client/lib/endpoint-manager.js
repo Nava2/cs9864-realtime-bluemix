@@ -12,6 +12,8 @@ const formatter = require('formatter');
 
 const Cloudant = require('cloudant');
 
+const safe = require('./safe-callback');
+
 module.exports = (winston) => {
 
   const w = (!!winston ? winston : require('winston'));
@@ -31,7 +33,7 @@ module.exports = (winston) => {
     /**
      * Create a new `Manager` that manages endpoints against a cloudant-based storage.
      *
-     * @param {String|URL} config.url Cloudant database URL
+     * @param {String|URL} config.cloudantUrl Cloudant database URL
      *
      * @param {Number} [config.refresh-rate=120000] Milliseconds between updating cloudant storage
      * @param {String} [config.database] Name of the database on Cloudant
@@ -39,42 +41,22 @@ module.exports = (winston) => {
     constructor(config) {
 
       config = _.defaults(config, {
-        "refresh-rate": 120000 // 2 minutes
+        "refresh-rate": 30000 // 30 seconds
       });
-
-      if (!_.isString(config.url)) {
-        if (!!config.url.protocol) {
-          config.url = url.format(config.url);
-        } else {
-          throw new TypeError('config.url must be a string or URL object');
-        }
-      }
 
       // Initialize the library with my account.
 
       this._refreshRate = config['refresh-rate'];
-      this._url = config.url;
+      this._url = config.cloudantUrl;
       this._dbName = config.database;
-    }
 
-    static _safeNext(next) {
-      if (_.isFunction(next) && next.name === '__Manager__safeNext') {
-        return next;
+      if (this._url.slice(-1) == '/') {
+        this._url = this._url.slice(0, -1);
       }
-
-      function __Manager__safeNext(err) {
-        if (_.isFunction(next)) {
-          next(err);
-        } else if (!!err) {
-          throw err;
-        }
-      }
-
-      return __Manager__safeNext;
     }
 
     _fetchEndpoints(next) {
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       // fetch the endpoints from the server
       this._db.find({
@@ -85,6 +67,8 @@ module.exports = (winston) => {
 
         if (!err) {
           let docs = result.docs;
+
+          w.silly("EPManager#_fetchEndpoints: result =", util.inspect(result, {color: true, deep: true}));
 
           // build up two maps: 1) ticker => id, 2) id => endpoint
           let tmap = {}, imap = {};
@@ -105,6 +89,8 @@ module.exports = (winston) => {
 
           this._tickerMap = tmap;
           this._epMap = imap;
+
+          w.silly("EPManager#_fetchEndpoints: this._tickerMap =", util.inspect(this._tickerMap, {color: true, deep: true}));
         }
 
         snext(err);
@@ -145,17 +131,14 @@ module.exports = (winston) => {
         }
       }, (err, res) => {
         // w.debug('res = %s', util.inspect(res.indexes));
-
-        if (res.docs.length < 1) {
+        if (!err && res.docs.length < 1) {
           // not found :<
 
           db.insert(indexDoc, (err, res) => {
             w.debug('Index created? %s', !err ? res.ok : false);
             next(err);
           });
-
         } else {
-
           next(err);
         }
       });
@@ -165,7 +148,7 @@ module.exports = (winston) => {
     _initDb(cloudant, next) {
       assert(!this._db);
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
       cloudant.db.create(this._dbName, err => {
         if (!err) {
           this._db = cloudant.db.use(this._dbName);
@@ -184,7 +167,7 @@ module.exports = (winston) => {
 
       const cloudant = Cloudant({url: this._url});
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
       const dbExists = () => {
 
         // when the db exists, run a verify
@@ -227,7 +210,7 @@ module.exports = (winston) => {
     }
 
     stop(next) {
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       if (!this._fetchInterval) {
         snext(new Error('Can not stop unstarted Manager.'));
@@ -241,27 +224,29 @@ module.exports = (winston) => {
     /**
      * Get all of the EndPoint instances that subscribe to the `tickers`.
      * @param {String[]} tickers Tickers requested.
-     * @returns {EndPoint[]} Array of endpoint instances
+     * @returns {{ep: EndPoint, tickers: String[]}[]} Array of endpoint instances
      */
     endPointsFor(tickers) {
-      let epIds = new Set();
+      let eps = [];
       const tmap = this._tickerMap;
-      tickers.forEach(ticker => {
+      tickers.map(_.upperCase).forEach(ticker => {
         if (_.has(tmap, ticker)) {
           tmap[ticker].forEach(id => {
-            epIds.add(id);
+            eps.push(id);
           });
         } else {
           // w.debug('Ticker %s is not currently subscribed to.', ticker);
         }
       });
 
+      eps = _.uniq(eps);
+
+      if (eps.length > 0) {
+        w.debug("EPManager::endPointsFor: Found tickers relevant to: ", eps);
+      }
+
       // now we have all the epIds we need:
-      let eps = [];
-      epIds.forEach(id => {
-        eps.push(this._epMap[id]);
-      });
-      return eps;
+      return eps.map(id => (this._epMap[id]));
     }
 
     /**
@@ -272,48 +257,75 @@ module.exports = (winston) => {
     addEndPoint(ep, next) {
       assert(!!ep);
 
-      const snext = Manager._safeNext(next);
+      const snext = (err) => {
+        this._fetchEndpoints(() => {
+          safe(next)(err);
+        });
+      };
 
       if (!this._db) {
         snext(new Error("Can not add an endpoint, must call Manager#init() first."));
         return;
       }
 
-      const tickers = ep.tickers.map(_.lowerCase);
-      const Q = F.EXACT_EP(ep.endpoint.json);
+      const tickers = ep.tickers.map(_.upperCase);
+      const Q = F.EXACT_EP(ep.endpoint.toJson());
+      w.info('EndPointManager: Register Query: %s', Q);
 
       const db = this._db;
+
+      function update(res) {
+        w.debug('EPManager#addEndPoint: Update', ep.endpoint.toString());
+        w.debug('EPManager#addEndPoint: get.res =', util.inspect(res));
+        db.insert(_.extend(res, {
+          tickers: _.uniq(_.flatten(tickers, res.tickers)).sort()
+        }), snext);
+      }
+
+      function create() {
+        w.debug('EPManager#addEndPoint: Create', ep.endpoint.toString());
+        db.insert({
+          tickers: ep.tickers,
+          endpoint: ep.endpoint.toJson()
+        }, snext);
+      }
+
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
         if (!err) {
           if (res.rows.length > 0) {
+            w.debug('search.res =', util.inspect(res));
             // it already exists
             // don't add it, but do check if updates are needed
             db.get(res.rows[0].id, (err, res) => {
               if (!err) {
-                if (_.has(res, 'tickers')
-                    && _.has(res, 'endpoint')
-                    && !_.isEqual(res.tickers, tickers)) {
-                  // need to update:
-                  db.insert(_.extend(res, {
-                    tickers: tickers
-                  }), snext);
+                w.debug("EPManager#addEndPoint: get.res =", util.inspect(res, {deep: true}));
 
+                if (_.isEqual(res.endpoint, ep.endpoint.toJson())) {
+                  if (!_.isEqual(res.tickers, tickers)) {
+                    // need to update because the tickers are different
+
+                    w.silly("EPManager#addEndPoint: Updating, tickers do not match.");
+                    update(res);
+                  } else {
+                    // no need to update, the tickers are identical
+                    w.silly("EPManager#addEndPoint: Not updating, the tickers are identical");
+                    snext(err);
+                  }
                 } else {
-                  // no need to update, just pass it on
-                  snext(err);
+                  // need to create new endpoint
+                  w.silly("EPManager#addEndPoint: Create: found endpoint is not correct.");
+                  create();
                 }
               } else {
-                // error happened when trying to get the row
+                // error happened from db.get()
+                w.silly("EPManager#addEndPoint: Error occurred:", err.toString());
                 snext(err);
               }
             });
           } else {
             // else it doesn't exist, so add it!
-
-            db.insert({
-              tickers: ep.tickers,
-              endpoint: ep.endpoint.json
-            }, snext);
+            w.silly("EndPointManager#addEndPoint: Creating new instance because no row was found by query:", Q);
+            create();
           }
         } else {
           // !err - db.search()
@@ -325,44 +337,57 @@ module.exports = (winston) => {
     /**
      * Removes's an endpoint from the manager and if necessary, removes it from the database
      * @param {EndPoint} ep
-     * @param [next]
+     * @param {function(Error, boolean)} [next]
      */
     removeEndpoint(ep, next) {
       assert(!!ep);
 
-      const snext = Manager._safeNext(next);
+      const snext = safe(next);
 
       if (!this._db) {
         snext(new Error("Can not remove an endpoint, must call Manager#init() first."));
         return;
       }
 
-      const Q = F.EXACT_EP(ep.json);
+      const Q = F.EXACT_EP(ep.toJson());
+      w.silly('EndPointManager#removeEndpoint: Query: %s, EndPoint: %s', Q, ep.toString());
 
       const db = this._db;
       db.search('endpoints', 'endpoints', { q: Q }, (err, res) => {
         if (!err) {
+          w.debug('EPManager#removeEndpoint: search.res =', util.inspect(res));
           if (res.rows.length > 0) {
-            // it exists, so get the revision
-            let id = res.rows[0].id;
-            db.get(id, (err, res) => {
-              assert(id === res._id);
-
-              // now actually destroy it
+            // it already exists
+            // don't add it, but do check if updates are needed
+            db.get(res.rows[0].id, (err, res) => {
               if (!err) {
-                db.destroy(id, res._rev, snext);
+                w.debug("EPManager#removeEndpoint: get.res =", util.inspect(res, {deep: true}));
+
+                if (_.isEqual(res.endpoint, ep.toJson())) {
+                  // now actually destroy it
+                  w.debug("EPManager#removeEndpoint: Removing (%s, %s)", res._id, res._rev);
+
+                  db.destroy(res._id, res._rev, err => {
+                    snext(err, !err);
+                  });
+
+                }
               } else {
-                snext(err);
+                w.silly("EPManager#removeEndpoint: Error from db.get %s", error.toString());
+
+                snext(err, false);
               }
             });
           } else {
-            // else it doesn't exist, so we can ignore it..
+            // else no rows exist
+            w.silly("EPManager#removeEndpoint: Could not find result from search (likely already deleted).");
 
-            snext(err);
+            snext(err, false);
           }
         } else {
           // !err - db.search()
-          snext(err);
+          w.silly("EPManager#removeEndpoint: Error in search.");
+          snext(err, false);
         }
       });
     }

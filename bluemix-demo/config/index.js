@@ -13,7 +13,7 @@ if (!!process.env['VCAP_APP_PORT']) {
 
   vcap = cfenv.getAppEnv();
   _.each(config.vcap.services, (v, key) => {
-    vcap.services[key] = v;
+      vcap.services[key] = v;
   });
 } else {
   config = require('./config.local.json');

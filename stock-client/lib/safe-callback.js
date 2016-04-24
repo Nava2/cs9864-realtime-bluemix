@@ -7,7 +7,7 @@ module.exports = function Safe(next) {
 
   function __safeNextCallback__(err) {
     if (_.isFunction(next)) {
-      next(err);
+      next.apply(null, arguments);
     } else if (!!err) {
       throw err;
     }

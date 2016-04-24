@@ -37,7 +37,17 @@ module.exports = (winston) => {
       });
 
       if (!!config.href) {
-        config = _.extend(config, url.parse(config.href));
+        if (!_.isString(config.href)) {
+          config = _.extend(config, config.href);
+        } else {
+          config = _.extend(config, url.parse(config.href));
+        }
+
+        if (!config.port) {
+          if (_.isString(config.port) && config.port.length == 0) {
+            config.port = 80;
+          }
+        }
       }
 
       assert(config.verb === 'POST' || config.verb === 'PUT');
@@ -89,7 +99,9 @@ module.exports = (winston) => {
      * Get the hostname sent to
      * @returns {string}
      */
-    get hostname() { return this._href.hostname; }
+    get hostname() {
+      return this._href.hostname;
+    }
 
     /**
      * Get the pathname sent to
@@ -101,7 +113,7 @@ module.exports = (winston) => {
      * Get the port number used
      * @returns {number}
      */
-    get port() { return this._href.port; }
+    get port() { return (!!this._href.port ? this._href.port : 80); }
 
     get timeout() { return this._timeout; }
 

@@ -23,11 +23,12 @@ if (app.get('env') === 'development') {
 
 w.info("Configuration: %s", util.inspect(config, { depth: null, colors: true }));
 
-app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(logger('dev'));
+app.use(logger('combined', {
+  skip: function (req, res) { return res.statusCode < 400 }
+}));
 
 const EP = require('./lib/endpoint-manager')(w);
 const lib = require('./lib/stock-client')(w);
@@ -36,42 +37,51 @@ const register = require('./routes/register')(w);
 
 app.use(register);
 
-const mgr =  new EP.Manager(config.cloudant);
+const mgr =  new EP.Manager({
+  cloudantUrl: config.getServiceURL(/^Cloudant NoSQL DB.*/),
+  "refresh-rate": config.locals.database["refresh-rate"],
+  database: config.locals.database.name
+});
 app.locals.mgr = mgr;
 
 const client = new lib.StockClient({
   app: app,
-  local: {
-    href: config.local.href
-  },
-  remote: {
-    href: config.remote.href,
-    secret: config.remote.secret
-  },
+  config: config,
   handlers: {
     data: (data) => {
       const eps = mgr.endPointsFor(data.tickers);
 
       if (eps.length > 0) {
+        w.silly("Sending data to %d endpoints!", eps.length);
         // only decode if necessary
         data.payload((err, payload) => {
 
           eps.forEach(e => {
-            const validTickers = _.intersection([e.tickers, data.tickers]);
+            const validTickers = _.intersection(e.tickers, data.tickers);
 
-            e.ep.send({
-              path: '/',
-              data: {
-                when: data.when.format('YYYY-MM-DDThh:mm:ss'),
-                tickers: validTickers,
-                payload: _.pick(payload, validTickers)
-              },
-              next: err => {
-                if (!!err) {
-                  w.warn(`Failed to send: ${err} {${ep.toString()}}`);
+            if (validTickers.length > 0) {
+              const payloadToSend = _.pick(payload, validTickers.map(_.upperCase));
+              const rowCount = _.reduce(_.map(payloadToSend, v => (v.length)), (s, v) => (s + v));
+              w.silly("Sending %d rows from %d tickers to %s", rowCount, _.keys(payloadToSend).length, e.ep.toString());
+              
+              e.ep.send({
+                path: '',
+                data: {
+                  when: data.when.format('YYYY-MM-DDThh:mm:ss'),
+                  tickers: validTickers,
+                  payload: payloadToSend
+                },
+                next: err => {
+                  if (!!err) {
+                    mgr.removeEndpoint(e.ep, () => {
+                      w.warn(`Removing: Failed to send: ${err} {${e.ep.toString()}}`);
+                    });
+                  } else {
+                    w.debug(`sent data to ${e.ep.toString()}`);
+                  }
                 }
-              }
-            });
+              });
+            }
           });
         });
       }
@@ -82,11 +92,11 @@ const client = new lib.StockClient({
 });
 app.locals.stockClient = client;
 
-app.listen(process.env.VCAP_APP_PORT || config.local.href.port, () => {
+app.listen(config.port, () => {
   w.info("express started!");
 
   mgr.init(err => {
-
+    if (!!err) throw err;
   });
 
   client.connect(err => {
