@@ -9,9 +9,7 @@ var express = require('express');
 // for more info, see: https://www.npmjs.com/package/cfenv
 var cfenv = require('cfenv');
 
-//Setup RSS Feed Parser
-var FeedParser = require('feedparser')
-    , request = require('request');
+
 
 parser = require('parse-rss');
 
