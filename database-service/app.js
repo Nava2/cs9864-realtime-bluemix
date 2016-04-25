@@ -79,7 +79,7 @@ app.use('/api', api);
 //   });
 // });
 
-app.listen(config.port, () => {
+app.listen(6942, () => {
   w.info("express started!");
   const uri = config.getServiceURL("stock-client") + 'register';
 

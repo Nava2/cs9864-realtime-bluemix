@@ -31,22 +31,22 @@ const cloudant_cred = require('../cloudant.json').credentials;
 
 module.exports = (store, winston) => {
 
-  var myStocks=[];
   const cloudant = Cloudant(cloudant_cred.url);
 
   const stockname="stockname";
 
   var stockcollection = cloudant_cred.collectionname1;
 
+  //Setting up Service with proper registration and ensure database is up and running
   getcollection(cloudant_cred.collectionname1);
   listIndexes(cloudant_cred.collectionname1);
   indexfields(stockname);
+  updateRegistration();
 
   const w = (!!winston ? winston : require('winston'));
-  const chance = new Chance();
-  w.info("chance"+chance.guid());
-  w.info("Config = %s", util.inspect(config));
-
+  // const chance = new Chance();
+  // w.info("chance"+chance.guid());
+  // w.info("Config = %s", util.inspect(config));
 
   // get the collection. create it if it does not exist.
   function getcollection(collectionname) {
@@ -104,42 +104,43 @@ module.exports = (store, winston) => {
       }
     });
   }
-
+// Add new ticker to the stock list database
   function addTicker (ticker) {
-      var regname = ticker;
+    console.log("WE are in add ticker");
+    var regname = ticker;
     var db = cloudant.use(stockcollection);
-      if (db) {
-        // check deplicated bsname
-        var query={};
-        query[stockname]=regname;
-        db.find({selector:query}, function(er, result) {
-          // db.find({selector:{"valid":1,bsnamefield:regname}}, function(er, result) {
-          if(!!er) {
-            throw er;
-          }
-          if(result.docs.length>0){
-            var a= { error: 'this stock is already being saved!' };
-            return a;
-          }else{
-            query={};
-            query["valid"]=1;
-            query[stockname]=regname;
-            db.insert(query);
-            // db.insert({"valid":1,bsnamefield:regname,bsurlfield:regurl});
-            var a={stockname:regname};
-            return a;
-          }
-        });
-      }else{
-        console.log('db is not running');
-        var a= {error: 'db is not running'};
-        return a;
-      }
-    };
-
+    if (db) {
+      // check deplicated bsname
+      var query={};
+      query[stockname]=regname;
+      db.find({selector:query}, function(er, result) {
+        // db.find({selector:{"valid":1,bsnamefield:regname}}, function(er, result) {
+        if(!!er) {
+          throw er;
+        }
+        if(result.docs.length>0){
+          var a= { error: 'this stock is already being saved!' };
+          return a;
+        }else{
+          query={};
+          query["valid"]=1;
+          query[stockname]=regname;
+          db.insert(query);
+          // db.insert({"valid":1,bsnamefield:regname,bsurlfield:regurl});
+          //var a={stockname:regname};
+          //return a;
+        }
+      });
+    }else{
+      console.log('db is not running');
+      //var a= {error: 'db is not running'};
+      //return a;
+    }
+  };
+// Get the list of tickers we need to be registered for
   function getStockList(callback) {
     var db = cloudant.use(stockcollection);
-    var m_arr=[];
+    var my_arr=[];
     if (db) {
       var query = { selector: {"_id": {"$gt": 0}}};
       db.find(query, function(er, result) {
@@ -150,20 +151,23 @@ module.exports = (store, winston) => {
         }
         for (var i = 0; i < result.docs.length; i++) {
           var data={};
-          data[stockname]=result.docs[i][stockname];
-          m_arr.push(data);
+          if(result.docs[i][stockname]!==undefined) {
+            data[stockname] = result.docs[i][stockname];
+            my_arr.push(data);
+          }
         }
-        callback(m_arr);
+        callback(my_arr);
       });
     }else{
       console.log('db is not running')
       //var a={error: 'db is not running'};
       callback(null);
     }
-    
+
   };
   router.get('/allstocks', function (req, res) {
     var db = cloudant.use(stockcollection);
+    console.log(myStocks);
     var m_arr=[];
     if (db) {
       // check deplicated bsname
@@ -178,6 +182,7 @@ module.exports = (store, winston) => {
         for (var i = 0; i < result.docs.length; i++) {
           var data={};
           data[stockname]=result.docs[i][stockname];
+          console.log("adding "+JSON.stringify(data));
           m_arr.push(data);
         }
         res.json(m_arr);
@@ -190,57 +195,111 @@ module.exports = (store, winston) => {
 
 
 
-  
+  // We receive data here from the stream handler
   router.post('/data', (req, res) => {
 
-    console.log(res.body);
+    // Respond to stream handler right away
     res.json({success: true});
+
+    // Get Relevant Data from req
     const body = req.body;
     const tickers = body.tickers.map(_.lowerCase);
-    const when = moment(body.when, "YYYY-MM-DDThh:mm:ss");
-    let now = {
-      date: when.format("YYYY-MM-DD"),
-      time: when.format("hh:mm:ss")
-    };
+    var dat = new Date(Date.parse(req.body.when));
+    console.log("tickers in data: "+tickers);
 
-    _.each(myStocks,data =>{
-      // intersect the body tickers with the "data" tickers
 
-      let int = _.intersection(tickers, data.map(_.lowerCase));
-      if (int.length > 0) {
-        // have tickers we care about
+    // Iterate over each stock
+    _.each(req.body.payload, (arr, key) => {
 
-        int.length.forEach(t => {
-          body.payload[t].forEach(v => {
-            console.log(t);
-             // data.stocks.push(_.extend(_.clone(v), {
-             //   ticker: t,
-             //   when: now
-             // }));
-          });
-        });
-      }
+      //Create entry context (time and stock)
+      var ctx = {"stockname":key,"time":dat};
+
+      //Reduce all the payload
+      var a=_.reduce(arr,function(result,value,index){
+        if(index==0){
+          result.push({
+            id: value.id,
+            transactions:value.size,
+            price:value.price,
+            suspicious:value.sus
+          })}
+        else{
+          result.push({
+            id: value.id,
+            transactions:value.size+result[index-1].transactions,
+            price:value.price,
+            suspicious:value.sus+result[index-1].suspicious,
+          })}
+        return result;
+      },[]);
+      // Grab the last entry of the payload reduction, this is what we save
+      var lastData=_.extend(ctx,a[a.length-1]);
+      console.log(JSON.stringify(lastData));
     });
+
   });
 
 
-  router.post('/tickers', (req, res) => {
+  // Register with the stream handler with all stocks we are supposed to
+  function updateRegistration(){
+    getStockList(function (stockList) {
+      var arr=[];
+      for(var j = 0; j < stockList.length; j++) {
+        arr[j]=stockList[j].stockname
+      }
+      console.log("updated stock list: "+arr);
+      request.put({
+        url: config.getServiceURL("stock-client") + 'register',
+        json: {
+          href: remoteHref,
+          verb: config.locals.client.verb,
+          tickers: arr
+        }
+      }, (err, res, body) => {
 
+        if (!!err) {
+          throw err;
+        }
+        w.info(util.inspect(body));
+        if (!!body.success) {
+          // successfully registered :3
+        } else {
+          w.warn("wtf? %s", body.err);
+        }
+      });
+
+    });
+  }
+
+  // Get new tickers we need to register for here and we register them
+  router.post('/tickers', (req, res) => {
 
     const tickers = req.body.tickers.map(_.upperCase);
     var tobeadded = [];
     var temp = false;
     getStockList(function (stockList) {
+//      console.log("current stock list: "+stockList[0].stockname);
+      //console.log(stockList[0].stockname==(tickers[0]));
+      var arr=[];
+      for(var j = 0; j < stockList.length; j++) {
+        arr[j]=stockList[j].stockname
+      }
+      console.log("stockname array "+arr);
       for (var i = 0; i < tickers.length; i++) {
-        if (stockList.indexOf(tickers[i]) == -1) {
+        if(arr.length==0){
           addTicker(tickers[i]);
           tobeadded.push(tickers[i]);
-          temp=true;
-
+          temp = true;
+        }
+        else if (arr.indexOf(tickers[i])==-1) {
+          addTicker(tickers[i]);
+          tobeadded.push(tickers[i]);
+          temp = true;
         }
       }
-      if(temp) {
-        myStocks=myStocks.concat(tobeadded);
+      if(temp){
+        var myStocks=arr.concat(tobeadded);
+        console.log("new stock list: "+myStocks);
         request.put({
           url: config.getServiceURL("stock-client") + 'register',
           json: {
@@ -249,7 +308,7 @@ module.exports = (store, winston) => {
             tickers: myStocks
           }
         }, (err, res, body) => {
-          console.log(res.statusCode);
+          //console.log(res.statusCode);
 
           if (!!err) {
             throw err;
@@ -262,11 +321,14 @@ module.exports = (store, winston) => {
           }
         });
         res.json({success: true});
+      }else {
+        console.log("no new tickers to be added");
+        res.json({success: true});
       }
-      console.log("no new tickers to be added")
     });
   });
 
+  // Get new tickers we need to register for here and we register them
   router.put('/tickers', (req, res) => {
     const id = req.body.id;
     const tickers = req.body.tickers.map(_.upperCase);
@@ -282,8 +344,6 @@ module.exports = (store, winston) => {
       updateGTickers();
     });
   });
-
-
 
   return router;
 };
