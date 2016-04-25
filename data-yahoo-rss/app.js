@@ -69,6 +69,7 @@ app.get('/getData', function (req, res) {
             });
             if(int.length==0){
                 res.json("no data");
+                
             }
             else {
                 res.json(int);
