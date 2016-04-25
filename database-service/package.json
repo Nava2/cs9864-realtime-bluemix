@@ -8,7 +8,6 @@
   "dependencies": {
     "body-parser": "~1.13.2",
     "cfenv": "^1.0.3",
-    "chance": "^1.0.2",
     "cloudant": "^1.4.1",
     "compress": "^0.99.0",
     "compression": "^1.6.1",
@@ -23,6 +22,7 @@
     "request": "^2.72.0",
     "serve-favicon": "~2.3.0",
     "unirest": "^0.4.2",
-    "winston": "^2.2.0"
+    "winston": "^2.2.0",
+    "restler":"*"
   }
 }
