@@ -1,0 +1,15 @@
+extends layout
+
+block content
+  h1= title
+  p Welcome to #{title}
+
+  .form-inline
+    .form-group#ticker-form
+      label(for='#ticker-box') Ticker&nbsp;
+      input#ticker-box.form-control(type='text', placeholder='AAPL')
+    | &nbsp;
+    button#add-ticker.btn.btn-default Add!
+
+
+  ul#stock-list

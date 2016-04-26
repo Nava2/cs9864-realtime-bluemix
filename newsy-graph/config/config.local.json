@@ -1,0 +1,23 @@
+{
+  "vcap": {
+
+    "services": {
+      "stock-source": [
+        {
+          "name": "stock-source",
+          "label": "stock-source",
+          "credentials": {
+            "host": "aggregation-service-cs9864-2016.mybluemix.net",
+            "port": 80,
+            "url": "http://aggregation-service-cs9864-2016.mybluemix.net"
+          }
+        }
+      ]
+    }
+  },
+
+
+  "locals": {
+
+  }
+}
