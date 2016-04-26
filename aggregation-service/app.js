@@ -219,12 +219,15 @@ function getData (str,callback) {
         db.find({selector: query}, function (er, result) {
             if (!!er) {
                 throw er;
+
             }
             if(result.docs.length==0){
                 console.log("No data for the specified stock");
-                callback({"error":"No data for the specified stock"});
+                callback(null);
             }
-            callback(result.docs[0]);
+            else {
+                callback(result.docs[0]);
+            }
         });
     }else{
         console.log("No database connection");
@@ -313,11 +316,14 @@ app.get('/getDataSince', function (req, res) {
     let id = req.query.guid;
     console.log("stock: "+stock+" id:"+id);
 
+
     getData(stock, function (data) {
 
+        console.log(data);
         if(data==null){
-            res.json({"error":"Error getting stock data"});
-            return;
+            console.log("IN UNDEFINED")
+            let a={"error":"Error getting stock data"};
+            res.json(a);
         }else{
             let stockData = data;
            // console.log("old stockdata: "+stockData);
@@ -335,7 +341,7 @@ app.get('/getDataSince', function (req, res) {
                // console.log("news data: "+newsres);
                 if (data == null){
                     res.json({"error": "Error getting news data"});
-                    return;
+
                 }else{
                     getUserDate(stock,id, function (data)
                     {
