@@ -323,7 +323,7 @@ app.get('/getDataSince', function (req, res) {
         if(data==null){
             console.log("IN UNDEFINED")
             let a={"error":"Error getting stock data"};
-            res.json(a);
+            res.status(503).json(a);
         }else{
             let stockData = data;
            // console.log("old stockdata: "+stockData);
