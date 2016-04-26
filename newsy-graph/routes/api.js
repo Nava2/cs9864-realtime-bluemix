@@ -76,7 +76,14 @@ module.exports = (winston) => {
           },
           json: true
         }, (err, res, body) => {
-          cb(err, [ticker, body]);
+          if (!!err) {
+            cb(err, []);
+          } else if (res.statusCode !== 200) {
+            cb(new Error(`Bad status code ${res.statusCode} for ${ticker}`), []);
+          } else {
+            // Good!
+            cb(err, [ticker, body]);
+          }
         });
       }, (err, data) => {
         if (!!err) {

@@ -1,15 +1,34 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  h1 Ticker Watch!
 
-  .form-inline
-    .form-group#ticker-form
-      label(for='#ticker-box') Ticker&nbsp;
-      input#ticker-box.form-control(type='text', placeholder='AAPL')
-    | &nbsp;
-    button#add-ticker.btn.btn-default Add!
+  .container-fluid
+    .row
+      .col-md-12
+        .form-inline
+          .form-group#ticker-form
+            label(for='#ticker-box') Ticker&nbsp;
+            input#ticker-box.form-control(type='text', placeholder='AAPL')
+          | &nbsp;
+          button#add-ticker.btn.btn-default Add!
+
+          | &nbsp;
+          button#fetch-btn.btn.btn-default Fetch!
+
+    .row
+      .col-md-3
+        .row
+          h3 Stocks
+          ul#stock-list
+
+        .row
+          h3 Newsy-time Stuff
+          ul#news-list
+
+      .col-md-9
+        canvas#stock-chart
 
 
-  ul#stock-list
+
+
