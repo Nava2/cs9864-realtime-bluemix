@@ -1,7 +1,7 @@
 ---
 applications:
-- name:    demo2-cs9864-2016
-  host:    demo2-cs9864-2016
+- name:    ticker-stream
+  host:    ticker-stream-cs9864-2016
   memory:  256M
   instances: 1
   env:

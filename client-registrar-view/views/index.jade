@@ -1,0 +1,23 @@
+extends layout
+
+block content
+  h1 Currently Registered Services!
+
+  .container-fluid
+    .row
+      .col-md-12
+        table.table.table-striped
+          tr
+            th
+            th ID
+            th URL
+
+          each v in list
+            tr
+              td #{v.idx}
+              td #{v.csname}
+              td
+                a(href='#{v.csurl}', target='#') #{v.csurl}
+
+
+

@@ -60,7 +60,7 @@ module.exports = (store, winston) => {
     if (!_.isEqual(all, g_tickers)) {
       // update registry
       request.put({
-        url: config.getServiceURL("stock-client") + 'register',
+        url: config.getServiceURL("stock-data-handler") + 'register',
         json: {
           href: remoteHref,
           verb: config.locals.client.verb,

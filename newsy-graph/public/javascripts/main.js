@@ -236,6 +236,7 @@ $(function () {
         let $anchor = $('<a>');
 
         $anchor.attr('href', story.link);
+        $anchor.attr('target', '#');
         $anchor.text(story.title);
 
         $elem.append($anchor);

@@ -80,7 +80,7 @@ app.use(function(err, req, res, next) {
 
 app.listen(config.port, () => {
   w.info("express started!");
-  const uri = config.getServiceURL("stock-client") + 'register';
+  const uri = config.getServiceURL("stock-data-handler") + 'register';
 
   w.info("Registering with %s", uri);
 
@@ -95,9 +95,29 @@ app.listen(config.port, () => {
 
     const body = res.body;
     if (!!body.success) {
-      // successfully registered :3
-      
 
+      w.info("Registered with stock service!");
+
+      request.put({
+        uri: config.getServiceURL('service-registry') + 'add',
+        qs: {
+          name: config.name,
+          url: config.url
+        }
+      }, (err, resp) => {
+        if (!!err) {
+          w.error("Could not register with service registry");
+          throw err;
+        }
+
+        if (resp.statusCode !== 200) {
+          let msg = `Invalid status code on registration, ${resp.statusCode}`;
+          w.error(msg);
+          throw new Error(msg);
+        }
+
+        w.info("Registered with service-registry!");
+      });
     }
   });
 
