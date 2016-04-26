@@ -1,9 +1,9 @@
 ---
 applications:
-- name:    newsy-graph
-  host:    newsy-graph-cs9864-2016
-  memory:  256M
-  instances: 1
+- name:    newzy-chart
+  host:    newzy-chart-cs9864-2016
+  memory:  128M
+  instances: 2
   env:
     LOG_LEVEL: info
 

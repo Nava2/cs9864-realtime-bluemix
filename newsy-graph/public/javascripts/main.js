@@ -70,6 +70,7 @@ $(function () {
           position: "bottom",
           type: 'time',
           time: {
+            round: 'second',
             unit: 'minute',
             tooltipFormat: DATE_FORMAT,
             displayFormats: {
