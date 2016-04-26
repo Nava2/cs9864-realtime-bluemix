@@ -1,0 +1,9 @@
+---
+applications:
+- name:    newzy-chart
+  host:    newzy-chart-cs9864-2016
+  memory:  128M
+  instances: 2
+  env:
+    LOG_LEVEL: info
+

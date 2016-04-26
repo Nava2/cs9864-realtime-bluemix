@@ -1,0 +1,24 @@
+{
+  "name": "newsy-graph",
+  "description": "",
+  "main": "",
+  "authors": [
+    "Kevin Brightwell <kevin.brightwell2@gmail.com>"
+  ],
+  "license": "MIT",
+  "homepage": "http://newsy-graph-cs9864-2016.mybluemix.net/",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "lodash": "^4.11.2",
+    "Chart.js": "chartjs#^2.0.2",
+    "bootstrap": "^3.3.6",
+    "moment": "^2.13.0"
+  }
+}
