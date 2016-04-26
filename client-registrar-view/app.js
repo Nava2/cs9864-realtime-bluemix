@@ -13,7 +13,6 @@ const w = require('winston');
 const config = require('./config');
 
 const routes = require('./routes/index');
-const api = require('./routes/api')(w);
 
 const app = express();
 
@@ -35,7 +34,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'bower_components')));
 
 app.use('/', routes);
-app.use('/api', api);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -90,7 +88,7 @@ app.listen(config.port, () => {
       throw new Error(msg);
     }
 
-    w.info("Registered with service-registry.");
+    w.info("Registered with service-registry!");
   });
 // Wait 15s then close the connection
 // setTimeout(() => {

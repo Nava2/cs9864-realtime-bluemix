@@ -1,0 +1,9 @@
+---
+applications:
+- name:    client-registry-view
+  host:    client-registry-view-cs9864-2016
+  memory:  128M
+  instances: 1
+  env:
+    LOG_LEVEL: info
+
