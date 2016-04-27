@@ -1,8 +1,11 @@
 
-
+'use strict'
 // This application uses express as its web server
 // for more info, see: http://expressjs.com
 var express = require('express');
+
+//Use lodash
+var _ = require('lodash');
 
 
 // cfenv provides access to your Cloud Foundry environment
@@ -11,7 +14,7 @@ var cfenv = require('cfenv');
 
 //Setup RSS Feed Parser
 
-parser = require('parse-rss');
+var parser = require('parse-rss');
 
 // create a new express server
 var app = express();
@@ -25,7 +28,7 @@ var appEnv = cfenv.getAppEnv();
 //get the Data from the feed and through the rss to JSON translator.
 // Pass in stock and callback function
 function getData (str,callback) {
-    url='http://finance.yahoo.com/rss/headline?s='+str;
+    let url='http://finance.yahoo.com/rss/headline?s='+str;
     parser(url,function (err, rss) {
         if (rss==null) {
             console.log("An error has occured. Abort everything!");
@@ -33,31 +36,24 @@ function getData (str,callback) {
             callback(null);
         }
         else {
-            var keys = Object.keys(rss);
-            var result = [];
-            for (var i = 0, length = keys.length; i < length; i++) {
 
-                // Get the link from the substring
-                a=rss[i].link.indexOf('*');
-                b=rss[i].link.length;
-                var str=rss[i].link;
-                var res=str.substring(a+1,b);
+            var result=_.map(rss, (key)=>{
 
-                // Make the date field a Date object
-                dat = new Date(Date.parse(rss[i].date));
+                let star=key.link.indexOf('*');
+                let length=key.link.length;
+                let link =key.link.substring(star+1,length);
 
-                //Add post to the array
-                result.push({guid: rss[i].guid,title: rss[i].title, date: dat,link:res});
+               return ({guid: key.guid,title: key.title, date: key.date,link:link});
 
-            }
+            });
             callback(result);
         }
     });
 }
 
 // //Example : http://localhost:6003/getData?stockname=AAPL
-app.get('/getData', function (req, res) {
-    stock = req.query.stockname;
+app.get('/Data', function (req, res) {
+    let stock = req.query.stockname.toUpperCase();
 
     getData(stock,function(data) {
         if(data!==null) {
