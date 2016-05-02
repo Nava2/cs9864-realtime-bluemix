@@ -10,6 +10,8 @@
 //------------------------------------------------------------------------------
 // node.js starter application for Bluemix
 //------------------------------------------------------------------------------
+'use strict';
+
 var restler = require('restler');
 
 // This application uses express as its web server
@@ -36,8 +38,8 @@ const cloudant = Cloudant(cloudant_cred.url);
 const bsnamefield=cloudant_cred.bsnamefield;
 const bsurlfield=cloudant_cred.bsurlfield;
 
-collectionname = cloudant_cred.collectionname;
-datefield = cloudant_cred.datefield;
+const collectionname = cloudant_cred.collectionname;
+const datefield = cloudant_cred.datefield;
 // db = cloudant.use(collectionname);
 
 var validUrl = require('valid-url');

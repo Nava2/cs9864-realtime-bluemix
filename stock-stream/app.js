@@ -13,7 +13,9 @@ const bodyParser = require('body-parser');
 const w = require('winston');
 const moment = require('moment');
 
-const config = require('./config');
+const lib = require('stock-client')(w);
+
+const config = require('blue-config')('./config');
 
 const app = express();
 
@@ -31,7 +33,6 @@ app.use(logger('combined', {
 }));
 
 const EP = require('./lib/endpoint-manager')(w);
-const lib = require('./lib/stock-client')(w);
 
 const register = require('./routes/register')(w);
 

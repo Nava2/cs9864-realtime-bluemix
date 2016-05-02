@@ -12,7 +12,7 @@ const formatter = require('formatter');
 
 const Cloudant = require('cloudant');
 
-const safe = require('./safe-callback');
+const safe = require('safe-callback');
 
 module.exports = (winston) => {
 
