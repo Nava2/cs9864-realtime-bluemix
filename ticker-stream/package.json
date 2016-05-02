@@ -6,6 +6,7 @@
     "start": "node ./app.js"
   },
   "dependencies": {
+    "blue-config": "github:uwo-cs9864-2016/blue-config",
     "body-parser": "~1.13.2",
     "cfenv": "^1.0.3",
     "chance": "^1.0.2",

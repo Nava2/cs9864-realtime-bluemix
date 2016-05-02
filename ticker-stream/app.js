@@ -1,11 +1,11 @@
 'use strict';
 
-var express = require('express');
-var path = require('path');
-var favicon = require('serve-favicon');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
+const express = require('express');
+const path = require('path');
+const favicon = require('serve-favicon');
+const logger = require('morgan');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
 const compression = require('compression');
 
 const url = require('url');
@@ -15,7 +15,7 @@ const _ = require('lodash');
 const w = require('winston');
 const request = require('request');
 
-const config = require('./config');
+const config = require('blue-config')('config');
 
 const remoteHref = config.isLocal ? {
   protocol: "http:",
@@ -24,10 +24,10 @@ const remoteHref = config.isLocal ? {
   pathname: config.locals.client.pathname
 } : _.extend(url.parse(config.url), { protocol: "http:", pathname: config.locals.client.pathname });
 
-var index = require('./routes/index')(w);
-var api = require('./routes/api')(w);
+const index = require('./routes/index')(w);
+const api = require('./routes/api')(w);
 
-var app = express();
+const app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -122,4 +122,3 @@ app.listen(config.port, () => {
   });
 
 });
-module.exports = app;

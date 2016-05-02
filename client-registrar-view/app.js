@@ -16,8 +16,6 @@ const routes = require('./routes/index');
 
 const app = express();
 
-w.level = 'silly';
-
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -90,19 +88,6 @@ app.listen(config.port, () => {
 
     w.info("Registered with service-registry!");
   });
-// Wait 15s then close the connection
-// setTimeout(() => {
-//   w.info("Disconnecting!");
-//
-//   client.disconnect(err => {
-//     if (!!err) throw err;
-//
-//     w.info("Disconnected!");
-//
-//     server.close();
-//   });
-//
-// }, 15000);
 
 });
 
