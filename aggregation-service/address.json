@@ -1,0 +1,6 @@
+{
+  "addresses": {
+    "yahoorss": "http://data-yahoo-rss-cs9864-2016.mybluemix.net",
+    "servicereg": "http://business-service-registrar-cs9864-2016.mybluemix.net"
+  }
+}
