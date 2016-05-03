@@ -128,7 +128,7 @@ function getFeed(hostId,stock, callback){
     });
 }
 
-app.post('/Register', function (req, res){
+app.post('/register', function (req, res){
     var chance = new Chance();
 
 // Use Chance here.
@@ -139,74 +139,83 @@ app.post('/Register', function (req, res){
 });
 
 ///Example : http://localhost:6003/getDataSync?stockname=AAPL
-app.get('/Data', function (req, res) {
-
-  //Grab the stock argument
-  let stock = req.query.stockname.toUpperCase();
-  let id = req.query.guid;
-
-  getStockList(function (stockList) {
-      let a=true;
-      console.log("stock "+stock);
-      for (var j = 0; j < stockList.length; j++) {
-          console.log(stockList[j].stockname);
-          if(stock===stockList[j].stockname){
-              a=false;
-          }
-      }
-      let b = [stock.toString()];
-      console.log(b);
-      console.log(a);
-      if(a){
-          console.log("try to add ticker");
-
-          request.put({
-              url: datab+'/api/tickers',
-              json: {
-                  "tickers":b
-              }
-          }, (err, res, body) => {
-              if (!!err) {
-                  throw err;
-              }
-              if (!!body.success) {
-                  // successfully registered :3
-              } else {
-                 // w.warn("wtf? %s", body.err);
-              }
-          });
-      }
-      getFeed(id,stock,function(data){
-          if(data==null){
-              res.status(503).json("error no data");
-          }
-          else {
-              res.status(200).json(JSON.parse(data));
-          }
-      });
-    });
-
-
-
-
-
-  });
-
-app.get('/News', function (req, res) {
+app.get('/data', function (req, res) {
 
     //Grab the stock argument
-    let stock = req.query.stockname.toUpperCase();
+    if(req.query.stockname==undefined || req.query.guid==undefined){
+        res.status(400).json({"error": "Need to pass stockname parameter"});
 
-        getNews(stock,function(data){
-            if(data==null){
-                res.status(503).json("error no data");
+    }else {
+        //Grab the stock argument
+        let stock = req.query.stockname.toUpperCase();
+        let id = req.query.guid;
+
+        getStockList(function (stockList) {
+            let a = true;
+            console.log("stock " + stock);
+            for (var j = 0; j < stockList.length; j++) {
+                console.log(stockList[j].stockname);
+                if (stock === stockList[j].stockname) {
+                    a = false;
+                }
             }
-            else {
-                res.status(200).json(JSON.parse(data));
+            let b = [stock.toString()];
+            console.log(b);
+            console.log(a);
+            if (a) {
+                console.log("try to add ticker");
+
+                request.put({
+                    url: datab + '/api/tickers',
+                    json: {
+                        "tickers": b
+                    }
+                }, (err, res, body) => {
+                    if (!!err) {
+                        throw err;
+                    }
+                    if (!!body.success) {
+                        // successfully registered :3
+                    } else {
+                        // w.warn("wtf? %s", body.err);
+                    }
+                });
             }
+            getFeed(id, stock, function (data) {
+                if (data == null) {
+                    res.status(503).json("error no data");
+                }
+                else {
+                    res.json(JSON.parse(data));
+                }
+            });
         });
 
 
+    }
+
+  });
+
+app.get('/news', function (req, res) {
+
+    //Grab the stock argument
+    if(req.query.stockname==undefined){
+        res.status(400).json({"error": "Need to pass stockname parameter"});
+
+    }else {
+        //Grab the stock argument
+        let stock = req.query.stockname.toUpperCase();
+
+        getNews(stock, function (data) {
+            if (data == null) {
+                res.status(503).json({"error":"error no data"});
+            }
+            else {
+                res.json(JSON.parse(data));
+            }
+        });
+
+    }
 
 
 
