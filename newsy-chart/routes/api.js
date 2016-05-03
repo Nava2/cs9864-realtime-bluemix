@@ -13,7 +13,7 @@ const request = require('request');
 
 const async = require('async');
 
-const config = require('../config');
+const config = require('blue-config')(__dirname + '/../config');
 
 // const remoteUrl = url.format(_.isString(config.remote.href) ? url.parse(config.remote.href) : config.remote.href);
 

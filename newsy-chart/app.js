@@ -10,7 +10,7 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const w = require('winston');
 
-const config = require('blue-config')('./config');
+const config = require('blue-config')(path.join(__dirname, 'config'));
 
 const routes = require('./routes/index');
 const api = require('./routes/api')(w);
@@ -92,19 +92,6 @@ app.listen(config.port, () => {
 
     w.info("Registered with service-registry.");
   });
-// Wait 15s then close the connection
-// setTimeout(() => {
-//   w.info("Disconnecting!");
-//
-//   client.disconnect(err => {
-//     if (!!err) throw err;
-//
-//     w.info("Disconnected!");
-//
-//     server.close();
-//   });
-//
-// }, 15000);
 
 });
 
