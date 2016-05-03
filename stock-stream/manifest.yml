@@ -1,7 +1,7 @@
 ---
 applications:
-- name:    stock-data-handler
-  host:    stock-data-handler-cs9864-2016
+- name:    stock-stream
+  host:    stock-stream-cs9864-2016
   memory:  256M
   instances: 2
   env:

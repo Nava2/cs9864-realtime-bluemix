@@ -15,7 +15,7 @@ const moment = require('moment');
 
 const lib = require('stock-client')(w);
 
-const config = require('blue-config')('./config');
+const config = require('blue-config')(__dirname + '/config');
 
 const app = express();
 

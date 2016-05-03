@@ -24,7 +24,7 @@ module.exports = (winston) => {
   const EndPoint = require('./endpoint')(w);
 
   const F = {
-    EXACT_EP: formatter('verb:{{ verb }} AND hostname:"{{ hostname }}" ' +
+    EXACT_EP: formatter('verb:"{{ verb }}" AND hostname:"{{ hostname }}" ' +
                           'AND pathname:"{{ pathname }}" AND port:"{{ port }}"')
   };
 
@@ -373,7 +373,7 @@ module.exports = (winston) => {
 
                 }
               } else {
-                w.silly("EPManager#removeEndpoint: Error from db.get %s", error.toString());
+                w.silly("EPManager#removeEndpoint: Error from db.get %s", err.toString());
 
                 snext(err, false);
               }

@@ -8,7 +8,6 @@
   "dependencies": {
     "blue-config": "github:uwo-cs9864-2016/blue-config",
     "body-parser": "~1.13.2",
-    "cfenv": "^1.0.3",
     "cloudant": "^1.4.1",
     "compression": "^1.6.1",
     "debug": "~2.2.0",
