@@ -273,7 +273,7 @@ module.exports = (store, winston) => {
 
         // lets see if we already have an entry for this stock
         var query={};
-        query[stockname]=key;
+        query["stockname"]=key;
         db.find({selector:query}, function(er, result) {
           if(!!er) {
             throw er;
@@ -318,6 +318,7 @@ module.exports = (store, winston) => {
   // We receive data here from the stream handler
   router.post('/data', (req, res) => {
     
+    console.log("getting data");
     // Respond to stream handler right away
     res.json({success: true});
     
@@ -367,7 +368,7 @@ module.exports = (store, winston) => {
           if(!!er) {
             throw er;
           }
-          if(result.docs.length==1){
+          if(result.docs.length>0){
 
            //exists, lets update
             result.docs[0].stockname=lastData.stockname;
