@@ -1,12 +1,14 @@
 'use strict';
 
+const path = require('path');
+
 const express = require('express');
 const router = express.Router();
 
 const _ = require('lodash');
 const request = require('request');
 
-const config = require('../config');
+const config = require('blue-config')(path.join(__dirname, '..', 'config'));
 const URI = config.getServiceURL('service-registry') + 'listall';
 
 /* GET home page. */

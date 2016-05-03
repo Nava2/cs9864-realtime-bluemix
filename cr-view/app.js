@@ -10,7 +10,7 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const w = require('winston');
 
-const config = require('./config');
+const config = require('blue-config')(path.join(__dirname, 'config'));
 
 const routes = require('./routes/index');
 

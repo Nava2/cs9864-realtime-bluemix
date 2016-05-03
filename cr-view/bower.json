@@ -1,12 +1,12 @@
 {
-  "name": "newsy-graph",
+  "name": "cr-view",
   "description": "",
   "main": "",
   "authors": [
     "Kevin Brightwell <kevin.brightwell2@gmail.com>"
   ],
   "license": "MIT",
-  "homepage": "http://newsy-graph-cs9864-2016.mybluemix.net/",
+  "homepage": "http://cr-view-cs9864-2016.mybluemix.net/",
   "private": true,
   "ignore": [
     "**/.*",

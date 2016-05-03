@@ -1,7 +1,7 @@
 # Predefined
 
-/config/config.local.json
-/config/config.bluemix.json
+config.*.json
+!config.template.json
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Node template

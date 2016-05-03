@@ -1,7 +1,7 @@
 ---
 applications:
-- name:    client-registry-view
-  host:    client-registry-view-cs9864-2016
+- name:    cr-view
+  host:    cr-view-cs9864-2016
   memory:  128M
   instances: 1
   env:
