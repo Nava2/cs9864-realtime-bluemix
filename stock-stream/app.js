@@ -39,7 +39,7 @@ const register = require('./routes/register')(w);
 app.use(register);
 
 const mgr =  new EP.Manager({
-  cloudantUrl: config.getServiceURL(/^Cloudant NoSQL DB.*/),
+  cloudantUrl: config.getServiceURL("Cloudant Storage"),
   "refresh-rate": config.locals.database["refresh-rate"],
   database: config.locals.database.name
 });
@@ -111,20 +111,6 @@ app.listen(config.port, () => {
       // started?
       w.info("Restarted server!");
     });
-
-    // Wait 15s then close the connection
-    // setTimeout(() => {
-    //   w.info("Disconnecting!");
-    //
-    //   client.disconnect(err => {
-    //     if (!!err) throw err;
-    //
-    //     w.info("Disconnected!");
-    //
-    //     server.close();
-    //   });
-    //
-    // }, 15000);
 
   });
 });
