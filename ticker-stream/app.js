@@ -15,7 +15,7 @@ const _ = require('lodash');
 const w = require('winston');
 const request = require('request');
 
-const config = require('blue-config')('config');
+const config = require('blue-config')(path.join(__dirname, 'config'));
 
 const remoteHref = config.isLocal ? {
   protocol: "http:",
@@ -42,6 +42,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'bower_components')));
 app.use(compression());
 
 app.use('/', index);
@@ -80,7 +81,7 @@ app.use(function(err, req, res, next) {
 
 app.listen(config.port, () => {
   w.info("express started!");
-  const uri = config.getServiceURL("stock-data-handler") + 'register';
+  const uri = config.getServiceURL("stock-stream") + 'register';
 
   w.info("Registering with %s", uri);
 
