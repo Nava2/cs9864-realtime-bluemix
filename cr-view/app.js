@@ -6,26 +6,13 @@ const favicon = require('serve-favicon');
 const logger = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const compression = require('compression');
 
-const url = require('url');
-const util = require('util');
-
-const _ = require('lodash');
-const w = require('winston');
 const request = require('request');
+const w = require('winston');
 
 const config = require('blue-config')(path.join(__dirname, 'config'));
 
-const remoteHref = config.isLocal ? {
-  protocol: "http:",
-  hostname: config.locals.client.hostname,
-  port: config.port,
-  pathname: config.locals.client.pathname
-} : _.extend(url.parse(config.url), { protocol: "http:", pathname: config.locals.client.pathname });
-
-const index = require('./routes/index')(w);
-const api = require('./routes/api')(w);
+const routes = require('./routes/index');
 
 const app = express();
 
@@ -36,17 +23,15 @@ app.set('view engine', 'jade');
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('combined', {
-  skip: function (req, res) { return res.statusCode < 400 }
+  // skip: function (req, res) { return res.statusCode < 400 }
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'bower_components')));
-app.use(compression());
 
-app.use('/', index);
-app.use('/api', api);
+app.use('/', routes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -80,46 +65,29 @@ app.use(function(err, req, res, next) {
 });
 
 app.listen(config.port, () => {
-  w.info("express started!");
-  const uri = config.getServiceURL("stock-stream") + 'register';
+  w.info("express started! port = %d", config.port);
 
-  w.info("Registering with %s", uri);
 
   request.put({
-    url: uri,
-    json: {
-      href: remoteHref,
-      verb: config.locals.client.verb,
-      tickers: []
+    uri: config.getServiceURL('service-registry') + 'add',
+    qs: {
+      name: config.name,
+      url: config.url
     }
-  }, (err, res) => {
-
-    const body = res.body;
-    if (!!body.success) {
-
-      w.info("Registered with stock service!");
-
-      request.put({
-        uri: config.getServiceURL('service-registry') + 'add',
-        qs: {
-          name: config.name,
-          url: config.url
-        }
-      }, (err, resp) => {
-        if (!!err) {
-          w.error("Could not register with service registry");
-          throw err;
-        }
-
-        if (resp.statusCode !== 200) {
-          let msg = `Invalid status code on registration, ${resp.statusCode}`;
-          w.error(msg);
-          throw new Error(msg);
-        }
-
-        w.info("Registered with service-registry!");
-      });
+  }, (err, resp) => {
+    if (!!err) {
+      w.error("Could not register with service registry");
+      throw err;
     }
+
+    if (resp.statusCode !== 200) {
+      let msg = `Invalid status code on registration, ${resp.statusCode}`;
+      w.error(msg);
+      throw new Error(msg);
+    }
+
+    w.info("Registered with service-registry!");
   });
 
 });
+

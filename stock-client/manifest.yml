@@ -1,8 +1,0 @@
----
-applications:
-- name:    stock-data-handler
-  host:    stock-data-handler-cs9864-2016
-  memory:  256M
-  instances: 2
-  env:
-    LOG_LEVEL: info

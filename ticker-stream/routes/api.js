@@ -1,5 +1,6 @@
 'use strict';
 
+const path = require('path');
 const url = require('url');
 const util = require('util');
 
@@ -11,7 +12,7 @@ const Chance = require('chance');
 const moment = require('moment');
 const request = require('request');
 
-const config = require('../config');
+const config = require('blue-config')(path.join(__dirname, '..', 'config'));
 
 const remoteHref = config.isLocal ? {
   protocol: "http:",
@@ -60,7 +61,7 @@ module.exports = (store, winston) => {
     if (!_.isEqual(all, g_tickers)) {
       // update registry
       request.put({
-        url: config.getServiceURL("stock-data-handler") + 'register',
+        url: config.getServiceURL("stock-stream") + 'register',
         json: {
           href: remoteHref,
           verb: config.locals.client.verb,

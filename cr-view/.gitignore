@@ -1,13 +1,9 @@
+# Predefined
 
-# JSON config files
-
-!bower.json
-!package.json
 config.*.json
 !config.template.json
 
 # Created by .ignore support plugin (hsz.mobi)
-
 ### Node template
 # Logs
 logs
@@ -90,4 +86,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-

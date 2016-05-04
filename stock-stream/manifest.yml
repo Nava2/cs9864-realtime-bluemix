@@ -1,0 +1,8 @@
+---
+applications:
+- name:    stock-stream
+  host:    stock-stream-cs9864-2016
+  memory:  256M
+  instances: 2
+  env:
+    LOG_LEVEL: info

@@ -1,0 +1,22 @@
+{
+  "name": "ticker-stream",
+  "description": "",
+  "main": "",
+  "authors": [
+    "Kevin Brightwell <kevin.brightwell2@gmail.com>"
+  ],
+  "license": "MIT",
+  "homepage": "http://ticker-stream-cs9864-2016.mybluemix.net/",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "lodash": "^4.11.2",
+    "bootstrap": "^3.3.6"
+  }
+}
