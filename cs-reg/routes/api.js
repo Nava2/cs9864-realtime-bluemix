@@ -22,9 +22,6 @@ const DB = {
   URL: "url"
 };
 
-
-
-
 module.exports = (DB_NAME) => {
   assert(_.isString(DB_NAME), 'Database name must be a string.');
 
@@ -145,7 +142,7 @@ module.exports = (DB_NAME) => {
   // eg. http://localhost:6004/add?name=s1&url=http://www.ss.com
   // accept many different names refering to the same url.
   // register a new service
-  router.put('/add', (req, res) => {
+  router.post('/add', (req, res) => {
     let regname, regurl;
 
     if (_.isString(req.query.name)) {
@@ -205,7 +202,7 @@ module.exports = (DB_NAME) => {
       if (!!err) throw err;
 
       // get all of the services that are valid
-      db.find({ selector: { valid: 1 } }, (er, result) => {
+      db.find({ selector: { valid: true } }, (er, result) => {
         if (!!er) {
           throw er;
         }
@@ -341,6 +338,10 @@ module.exports = (DB_NAME) => {
     });
   });
 
-  return router;
+  return {
+    router: router,
+
+    get_database: get_database
+  };
 
 };

@@ -45,7 +45,9 @@ const index = require('./routes/index');
 const api = require('./routes/api')(DB_NAME);
 
 app.use('/', index);
-app.use('/api', api);
+app.use('/api', api.router);
+
+require('./lib/heartbeat')(api.get_database);
 
 // start server on the specified port and binding host
 app.listen(config.port, () => {
