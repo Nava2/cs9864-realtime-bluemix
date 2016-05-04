@@ -1,22 +1,25 @@
 {
-  "name": "cr-view",
-  "version": "0.0.0",
+  "name": "cs-registry",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "start": "node ./app.js"
   },
   "dependencies": {
+    "async": "^2.0.0-rc.3",
     "blue-config": "github:uwo-cs9864-2016/blue-config",
     "body-parser": "~1.13.2",
     "cookie-parser": "~1.3.5",
+    "cloudant": "^1.4.1",
     "debug": "~2.2.0",
-    "express": "~4.13.1",
+    "express": "^4.13.4",
     "jade": "~1.11.0",
     "lodash": "^4.11.1",
     "moment": "^2.13.0",
     "morgan": "~1.6.1",
     "request": "^2.72.0",
-    "serve-favicon": "~2.3.0",
+    "safe-callback": "github:uwo-cs9864-2016/safe-callback",
+    "valid-url": "^1.0.9",
     "winston": "^2.2.0"
   }
 }

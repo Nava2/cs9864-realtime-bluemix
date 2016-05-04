@@ -72,8 +72,8 @@ app.listen(config.port, () => {
   w.info("express started! port = %d", config.port);
 
 
-  request.put({
-    uri: config.getServiceURL('service-registry') + 'add',
+  request.post({
+    uri: config.getServiceURL('service-registry') + 'api/add',
     qs: {
       name: config.name,
       url: config.url

@@ -1,9 +1,0 @@
----
-applications:
-- name:    cr-view
-  host:    cr-view-cs9864-2016
-  memory:  128M
-  instances: 1
-  env:
-    LOG_LEVEL: info
-

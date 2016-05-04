@@ -9,19 +9,18 @@ const _ = require('lodash');
 const request = require('request');
 
 const config = require('blue-config')(path.join(__dirname, '..', 'config'));
-const URI = config.getServiceURL('service-registry') + 'listall';
 
 /* GET home page. */
 router.get('/', (req, res) => {
 
   request.get({
-    uri: URI,
+    uri: config.url + '/api/list',
     json: true
   }, (err, resp, body) => {
     if (!!err) {
       res.render('error', {
-        message: "Server failure",
-        error: body.error
+        message: "Server problem.",
+        error: err.message
       });
     } else {
       res.render('index', {
