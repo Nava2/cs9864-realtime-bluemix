@@ -17,6 +17,7 @@ const express = require('express');
 
 const request = require('request');
 
+const restler = require('restler');
 
 // cfenv provides access to your Cloud Foundry environment
 // for more info, see: https://www.npmjs.com/package/cfenv
@@ -43,14 +44,14 @@ const guid = "guid";
 //Get the Data service address
 const yahoo = service_add.yahoorss;
 
-getCollection(stock_news_collection);
+getCollection(stock_data_collection);
 listIndexes(stock_news_collection);
 createIdIndexFields(stock_news_collection, guid);
 createStockIndexFields(stock_news_collection, stockname);
 
 
 function getCollection(collectionname) {
-    request.put(cloudant_cred.host + '/' + collectionname, {
+    restler.put(cloudant_cred.host + '/' + collectionname, {
         username: cloudant_cred.user,
         password: cloudant_cred.password
     }).on('complete', function (data) {

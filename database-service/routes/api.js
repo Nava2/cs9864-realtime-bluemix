@@ -278,7 +278,7 @@ module.exports = (store, winston) => {
           if(!!er) {
             throw er;
           }
-          if(result.docs.length==1){
+          if(result.docs.length>0){
 
             //exists, lets update
             result.docs[0].stockname=lastData.stockname;
