@@ -1,0 +1,8 @@
+---
+applications:
+- name:    cs-reg
+  host:    cs-reg-cs9864-2016
+  memory:  256M
+  instances: 2
+  env:
+    LOG_LEVEL: info
