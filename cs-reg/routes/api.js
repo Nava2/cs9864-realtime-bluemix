@@ -14,7 +14,7 @@ const _ = require('lodash');
 const config = require('blue-config')(path.join(__dirname, '..', 'config'));
 
 const Cloudant = require('cloudant');
-const cloudant = Cloudant(config.getServiceURL('Cloudant Storage'));
+const cloudant = Cloudant(config.getServiceURL('Cloudant Storage').slice(0, -1));
 
 const DB = {
   COLLECTION: "cs-registry",
@@ -44,66 +44,65 @@ module.exports = (DB_NAME) => {
         db = cloudant.db.use(DB_NAME);
 
         db.index((er, result) => {
-          if (!!er) {
-            callback(er);
-          } else {
-            // search all the indexes existed.
+
+          let index_calls = [];
+
+          let index_arr = [];
+          if (!er) {
             console.log('The database has %d indexes', result.indexes.length);
 
-            let index_arr = _.flatten(result.indexes.map(v => {
+            index_arr = _.flatten(result.indexes.map(v => {
               return _.keys(v.def['fields'][0]);
             }));
+          }
 
-            let index_calls = [];
+          //create index for the service name field if it does not exist.
+          if (index_arr.indexOf(DB.NAME) == -1) {
+            var name_index = {
+              name: 'name_index',
+              type: 'json',
+              index: {
+                fields: [DB.NAME]
+              }
+            };
 
-            //create index for the service name field if it does not exist.
-            if (index_arr.indexOf(DB.NAME) == -1) {
-              var name_index = {
-                name: 'name_index',
-                type: 'json',
-                index: {
-                  fields: [DB.NAME]
-                }
-              };
-
-              index_calls.push(callback => {
-                db.index(name_index, callback);
-              });
-            }
-
-            //create index for the service name field if it does not exist.
-            if (index_arr.indexOf(DB.URL) == -1) {
-              let date_index = {
-                name: 'url_index',
-                type: 'json',
-                index: {
-                  fields: [DB.URL]
-                }
-              };
-
-              index_calls.push(callback => {
-                db.index(date_index, callback);
-              });
-            }
-
-            if (index_arr.indexOf("valid") == -1) {
-              let valid_index = {
-                name: 'valid_index',
-                type: 'json',
-                index: {
-                  fields: ["valid"]
-                }
-              };
-
-              index_calls.push(callback => {
-                db.index(valid_index, callback);
-              });
-            }
-
-            async.parallel(index_calls, err => {
-              callback(err, db);
+            index_calls.push(callback => {
+              db.index(name_index, callback);
             });
           }
+
+          //create index for the service name field if it does not exist.
+          if (index_arr.indexOf(DB.URL) == -1) {
+            let date_index = {
+              name: 'url_index',
+              type: 'json',
+              index: {
+                fields: [DB.URL]
+              }
+            };
+
+            index_calls.push(callback => {
+              db.index(date_index, callback);
+            });
+          }
+
+          if (index_arr.indexOf("valid") == -1) {
+            let valid_index = {
+              name: 'valid_index',
+              type: 'json',
+              index: {
+                fields: ["valid"]
+              }
+            };
+
+            index_calls.push(callback => {
+              db.index(valid_index, callback);
+            });
+          }
+
+          async.parallel(index_calls, err => {
+            callback(err, db);
+          });
         });
       } // else checked
     };
