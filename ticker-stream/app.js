@@ -99,8 +99,8 @@ app.listen(config.port, () => {
 
       w.info("Registered with stock service!");
 
-      request.put({
-        uri: config.getServiceURL('service-registry') + 'add',
+      request.post({
+        uri: config.getServiceURL('service-registry') + 'api/add',
         qs: {
           name: config.name,
           url: config.url
